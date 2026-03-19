@@ -1,4 +1,4 @@
-package DAO;
+package DAO.MySQL;
 
 public class ArticuloDAOMySQL {
 }
