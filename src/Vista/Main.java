@@ -1,4 +1,4 @@
-package vista;
+package Vista;
 
 import Util.ConexionBD;
 import java.sql.Connection;
