@@ -6,11 +6,11 @@ import java.sql.SQLException;
 
 public class ConexionBD {
 
-    private static final String URL = "jdbc:mysql://autorack.proxy.rlwy.net:13802/railway";
+    private static final String URL = "jdbc:mysql://autorack.proxy.rlwy.net:13802/producto3";
     private static final String USER = "root";
     private static final String PASSWORD = "SppuTCrhvoNHXhezDpJcwTINkOenYool";
 
-    public static Connection obtenerConexion() throws SQLException {
+    public static Connection getConexion() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 }
