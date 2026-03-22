@@ -1,4 +1,3 @@
---Este archivo lo requiere la actividad y lo tenemos por si pasara algo--
 
 -- =========================
 -- TABLA CLIENTES
@@ -13,7 +12,7 @@ CREATE TABLE clientes (
 );
 
 -- =========================
--- TABLA ARTICULOS
+-- TABLA ARTÍCULOS
 -- =========================
 CREATE TABLE articulos (
     id_articulo INT AUTO_INCREMENT PRIMARY KEY,
@@ -48,3 +47,5 @@ CREATE TABLE pedidos (
         REFERENCES articulos(id_articulo)
         ON DELETE CASCADE
 );
+
+
