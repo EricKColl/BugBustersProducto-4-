@@ -4,7 +4,7 @@ import Controlador.Controlador;
 import Modelo.Articulo;
 import Modelo.Cliente;
 import Modelo.Pedido;
-import Modelo.excepciones.*;
+import Modelo.Excepciones.*;
 
 import java.util.List;
 import java.util.Scanner;

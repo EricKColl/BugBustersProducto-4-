@@ -12,7 +12,4 @@ public interface ArticuloDAO {
 
     List<Articulo> obtenerTodos() throws DAOException;
 
-    void actualizar(Articulo articulo) throws DAOException;
-
-    void eliminar(int id) throws DAOException;
 }
