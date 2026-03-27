@@ -45,12 +45,23 @@ public class Controlador {
     private ArticuloDAO articuloDAO;
 
     public Controlador() {
-        DAOFactory factory = DAOFactory.getDAOFactory(DAOFactory.MYSQL);
+        try {
+            // Intentamos conectar con la factoría MySQL
+            DAOFactory factory = DAOFactory.getDAOFactory(DAOFactory.MYSQL);
 
-        // Obtenemos todos los DAOs necesarios
-        this.pedidoDAO = factory.getPedidoDAO();
-        this.clienteDAO = factory.getClienteDAO();
-        this.articuloDAO = factory.getArticuloDAO();
+            // Asignamos los DAOs
+            this.clienteDAO = factory.getClienteDAO();
+            this.articuloDAO = factory.getArticuloDAO();
+            this.pedidoDAO = factory.getPedidoDAO();
+
+        } catch (DAOException e) {
+            // Si la base de datos falla, informamos y tomamos una decisión
+            System.err.println("Error crítico al inicializar los DAOs: " + e.getMessage());
+
+            // Opción recomendada: lanzar una RuntimeException.
+            // Esto detiene el programa porque sin DAOs el controlador no sirve para nada.
+            throw new RuntimeException("No se pudo arrancar el sistema de persistencia.", e);
+        }
     }
 
     // ==========================================
@@ -125,7 +136,7 @@ public class Controlador {
                 double gastosEnvio = articulo.getGastosEnvio();
 
 
-                if (cliente.getTipoCliente().equalsIgnoreCase("premium")) {
+                if (cliente instanceof ClientePremium) {
                     gastosEnvio = gastosEnvio * 0.80;
                 }
 
@@ -140,29 +151,79 @@ public class Controlador {
     }
 
     // ==========================================
-    // MÉTODOS PUENTE PARA CLIENTES
+    // MÉTODOS DE GESTIÓN DE CLIENTES
     // ==========================================
 
-    public boolean existeCliente(int idCliente) {
-        try {
-            return clienteDAO.obtenerPorId(idCliente) != null;
-        } catch (DAOException e) {
-            System.err.println("Error al verificar si el cliente existe: " + e.getMessage());
-            return false;
+    public void anadirCliente(String email, String nombre, String domicilio, String nif, int tipoCliente)
+            throws YaExisteException, DAOException, TipoClienteInvalidoException {
+
+        // 1. ¡CAMBIO AQUÍ! Usamos el nuevo método específico para email
+        if (clienteDAO.existePorEmail(email)) {
+            throw new YaExisteException("cliente", email);
+        }
+
+        // 2. Creamos el objeto cliente dependiendo del tipo
+        Cliente nuevoCliente;
+        if (tipoCliente == 1) {
+            nuevoCliente = new ClienteEstandar(email, nombre, domicilio, nif);
+        } else if (tipoCliente == 2) {
+            nuevoCliente = new ClientePremium(email, nombre, domicilio, nif);
+        } else {
+            throw new TipoClienteInvalidoException(tipoCliente);
+        }
+
+        // 3. Lo guardamos en la base de datos
+        // Esto funciona porque el ID es AUTO_INCREMENT en MySQL y el objeto cliente tiene los datos
+        clienteDAO.insertar(nuevoCliente);
+    }
+
+    public List<Cliente> obtenerTodosClientes() throws DAOException {
+        return clienteDAO.obtenerTodos();
+    }
+
+    public List<Cliente> obtenerClientesEstandar() {
+        return clienteDAO.obtenerClientesEstandar();
+    }
+
+    public List<Cliente> obtenerClientesPremium() {
+        return clienteDAO.obtenerClientesPremium();
+    }
+
+    public void emailValido(String email) throws EmailInvalidoException {
+        if (!email.contains("@") || !email.contains(".")) {
+            throw new EmailInvalidoException(email);
         }
     }
 
-    public void añadirClienteRapido(int idCliente, String email, String nombre, String domicilio, String nif, String tipo) {
-        try {
-            Cliente nuevoCliente = new Cliente(idCliente, email, nombre, domicilio, nif, tipo);
+    public Cliente buscarCliente(String email) throws EmailInvalidoException, RecursoNoEncontradoException, DAOException {
+        // 1. Primero validamos el formato (reutilizamos el método de antes)
+        emailValido(email);
 
-            clienteDAO.insertar(nuevoCliente);
-            System.out.println("Cliente registrado con éxito. Retomando el pedido...");
-        } catch (DAOException e) {
-            System.err.println("Error al crear el cliente rápido: " + e.getMessage());
+        // 2. Buscamos en la base de datos a través del DAO
+        Cliente cliente = clienteDAO.obtenerPorEmail(email);
+
+        // 3. Si no existe, lanzamos la excepción para que la Vista sepa qué decir
+        if (cliente == null) {
+            throw new RecursoNoEncontradoException("cliente", email);
         }
+
+        return cliente;
     }
 
+    public void eliminarCliente(String email) throws EmailInvalidoException, RecursoNoEncontradoException, DAOException {
+        // 1. Validamos formato
+        emailValido(email);
+
+        // 2. Buscamos al cliente para obtener su ID (o verificar existencia)
+        Cliente cliente = clienteDAO.obtenerPorEmail(email);
+        if (cliente == null) {
+            throw new RecursoNoEncontradoException("cliente", email);
+        }
+
+        // 3. Borramos usando el email (o el ID si tu DAO está configurado así)
+        // Suponiendo que tu DAO tiene un método borrarPorEmail o similar
+        clienteDAO.eliminar(email);
+    }
 
 /* =========================================================
        ================= GESTIÓN DE ARTÍCULOS ==================
