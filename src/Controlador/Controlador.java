@@ -189,6 +189,42 @@ public class Controlador {
         return clienteDAO.obtenerClientesPremium();
     }
 
+    public void emailValido(String email) throws EmailInvalidoException {
+        if (!email.contains("@") || !email.contains(".")) {
+            throw new EmailInvalidoException(email);
+        }
+    }
+
+    public Cliente buscarCliente(String email) throws EmailInvalidoException, RecursoNoEncontradoException, DAOException {
+        // 1. Primero validamos el formato (reutilizamos el método de antes)
+        emailValido(email);
+
+        // 2. Buscamos en la base de datos a través del DAO
+        Cliente cliente = clienteDAO.obtenerPorEmail(email);
+
+        // 3. Si no existe, lanzamos la excepción para que la Vista sepa qué decir
+        if (cliente == null) {
+            throw new RecursoNoEncontradoException("cliente", email);
+        }
+
+        return cliente;
+    }
+
+    public void eliminarCliente(String email) throws EmailInvalidoException, RecursoNoEncontradoException, DAOException {
+        // 1. Validamos formato
+        emailValido(email);
+
+        // 2. Buscamos al cliente para obtener su ID (o verificar existencia)
+        Cliente cliente = clienteDAO.obtenerPorEmail(email);
+        if (cliente == null) {
+            throw new RecursoNoEncontradoException("cliente", email);
+        }
+
+        // 3. Borramos usando el email (o el ID si tu DAO está configurado así)
+        // Suponiendo que tu DAO tiene un método borrarPorEmail o similar
+        clienteDAO.eliminar(email);
+    }
+
 /* =========================================================
        ================= GESTIÓN DE ARTÍCULOS ==================
        ========================================================= */

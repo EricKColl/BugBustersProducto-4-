@@ -224,34 +224,30 @@ public class Vista {
         TerminalUI.sectionTitle("AÑADIR CLIENTE");
         String email = leerTextoNoVacio("Email: ");
 
-        // Validar formato del email
+        // 1. Validar formato del email (Llama al método que añadimos arriba)
         try {
             controlador.emailValido(email);
         } catch (EmailInvalidoException e) {
-            TerminalUI.exception(e.getMessage());
+            TerminalUI.exception("Formato de email no válido.");
             return;
         }
 
-        // Validar que no exista
-        try {
-            controlador.existeCliente(email);
-        } catch (YaExisteException e) {
-            TerminalUI.exception(e.getMessage());
-            return;
-        }
-
-        // Si no salta excepción, pedir el resto de datos
+        // 2. Pedimos el resto de datos directamente
         String nombre = leerTextoNoVacio("Nombre: ");
         String domicilio = leerTextoNoVacio("Domicilio: ");
         String nif = leerTextoNoVacio("NIF: ");
         int tipoCliente = leerEntero("Tipo de cliente (1- Estándar, 2- Premium): ");
 
+        // 3. Dejamos que el controlador valide su existencia e insertar
         try {
             controlador.anadirCliente(email, nombre, domicilio, nif, tipoCliente);
             TerminalUI.success("Cliente añadido correctamente.");
-        } catch (EmailInvalidoException | TipoClienteInvalidoException | YaExisteException e) {
+        } catch (YaExisteException e) {
+            TerminalUI.exception("Error: El email " + email + " ya está registrado.");
+        } catch (TipoClienteInvalidoException | DAOException e) {
             TerminalUI.exception(e.getMessage());
         }
+
         TerminalUI.sciFiDivider();
     }
 
@@ -264,10 +260,12 @@ public class Vista {
         String email = leerTextoNoVacio("Introduce el Email del cliente: ");
 
         try {
+            // Ahora el controlador busca, valida y devuelve el objeto
             Cliente clienteEncontrado = controlador.buscarCliente(email);
             TerminalUI.showClientCard(clienteEncontrado);
 
-        } catch (EmailInvalidoException | RecursoNoEncontradoException e) {
+        } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) {
+            // Añadimos DAOException al catch para capturar errores de conexión
             TerminalUI.exception(e.getMessage());
         }
     }
@@ -277,7 +275,20 @@ public class Vista {
      */
     private void obtenerTodosClientes() {
         TerminalUI.sectionTitle("LISTADO DE TODOS LOS CLIENTES");
-        imprimirClientes("No hay clientes registrados.", controlador.obtenerTodosClientes());
+
+        try {
+            // Intentamos obtener la lista del controlador
+            List<Cliente> lista = controlador.obtenerTodosClientes();
+
+            // Se la pasamos al método que imprime (comprobando si está vacía)
+            imprimirClientes("No hay clientes registrados.", lista);
+
+        } catch (DAOException e) {
+            // Si hay error en la BD, lo mostramos con el estilo de tu UI
+            TerminalUI.exception("Error al acceder a los datos: " + e.getMessage());
+        }
+
+        TerminalUI.sciFiDivider();
     }
 
     /**
@@ -305,17 +316,24 @@ public class Vista {
         String email = leerTextoNoVacio("Introduce el Email del cliente: ");
 
         try {
+            // 1. Buscamos primero para mostrar los datos
             Cliente aEliminar = controlador.buscarCliente(email);
 
             TerminalUI.info("Cliente localizado correctamente.");
             TerminalUI.showClientCard(aEliminar);
 
+            // 2. OPCIONAL: Confirmación (Para evitar sustos)
+            String conf = leerTextoNoVacio("¿Estás seguro de eliminar a este cliente? (S/N): ");
+            if (!conf.equalsIgnoreCase("S")) return;
+
+            // 3. Llamada al controlador
             controlador.eliminarCliente(email);
 
             TerminalUI.success("Cliente eliminado con éxito.");
             TerminalUI.spotlight("REGISTRO ELIMINADO DEL SISTEMA");
 
-        } catch (EmailInvalidoException | RecursoNoEncontradoException e) {
+        } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) {
+            // Capturamos todos los posibles fallos (incluido el de MySQL)
             TerminalUI.exception(e.getMessage());
         }
     }
