@@ -20,6 +20,7 @@ Los principales objetivos de este producto son:
 - Definir claves primarias y foráneas.
 - Configurar adecuadamente los campos autoincrementales.
 - Preparar procedimientos almacenados para inserción, actualización y eliminación.
+- Aplicar transacciones en las operaciones DML principales.
 - Permitir la gestión estructurada de clientes, artículos y pedidos.
 - Mantener una organización clara del proyecto para facilitar su comprensión y mantenimiento.
 
@@ -33,8 +34,9 @@ El sistema está orientado a la gestión básica de una tienda online y contempl
 
 - Almacenamiento de datos de clientes.
 - Diferenciación entre clientes **estándar** y **premium**.
-- Registro de información básica como email, nombre, domicilio y NIF.
-- Actualización y eliminación mediante procedimientos almacenados.
+- Registro de información básica como **email**, **nombre**, **domicilio** y **NIF**.
+- Búsqueda, listado y eliminación de clientes.
+- Control para impedir eliminar clientes con pedidos asociados.
 
 ### Gestión de artículos
 
@@ -43,13 +45,18 @@ El sistema está orientado a la gestión básica de una tienda online y contempl
 - Precio de venta.
 - Gastos de envío.
 - Tiempo de preparación.
+- Listado y eliminación de artículos.
+- Control para impedir eliminar artículos con pedidos asociados.
 
 ### Gestión de pedidos
 
 - Asociación entre clientes y artículos.
 - Almacenamiento de cantidad, fecha y estado del pedido.
 - Relación entre tablas mediante claves foráneas.
-- Operaciones de inserción, modificación y eliminación.
+- Inserción, eliminación y consulta de pedidos.
+- Cambio manual de estado del pedido.
+- Cálculo automático del paso de **pendiente** a **enviado** según el tiempo de preparación del artículo.
+- Validación de cancelación de pedidos solo cuando aún son cancelables.
 
 ---
 
@@ -90,33 +97,41 @@ src/
 
 ### Descripción de la estructura
 
-#### `Controlador/`
+**Controlador/**
+
 Contiene la lógica de coordinación entre la vista y el modelo.
 
-#### `DAO/`
+**DAO/**
+
 Incluye la capa de acceso a datos, separada en interfaces y en sus implementaciones para MySQL.
 
-#### `Database/`
+**Database/**
+
 Contiene los scripts SQL fundamentales del proyecto:
 
 - Creación de la base de datos y de las tablas.
 - Procedimientos almacenados.
 - Datos de prueba.
 
-#### `Excepciones/`
+**Excepciones/**
+
 Incluye excepciones personalizadas para el control de errores.
 
-#### `Factory/`
+**Factory/**
+
 Contiene clases relacionadas con la creación o abstracción de objetos DAO.
 
-#### `Modelo/`
+**Modelo/**
+
 Incluye las clases que representan las entidades del sistema.
 
-#### `Util/`
+**Util/**
+
 Contiene utilidades generales, especialmente la conexión a la base de datos.
 
-#### `Vista/`
-Incluye la parte de ejecución o interacción principal del programa.
+**Vista/**
+
+Incluye la parte de ejecución o interacción principal del programa en modo consola.
 
 ---
 
@@ -163,9 +178,7 @@ Relaciona clientes y artículos mediante los pedidos realizados.
 - `fecha_hora`
 - `estado`
 
----
-
-## Relaciones entre tablas
+### Relaciones entre tablas
 
 La base de datos implementa integridad referencial mediante claves foráneas:
 
@@ -196,16 +209,19 @@ Archivo que contiene los procedimientos almacenados del proyecto.
 Incluye procedimientos para:
 
 #### Inserción
+
 - `insertar_articulo`
 - `insertar_cliente`
 - `insertar_pedido`
 
 #### Actualización
+
 - `actualizar_articulo`
 - `actualizar_cliente`
 - `actualizar_pedido`
 
 #### Eliminación
+
 - `eliminar_articulo`
 - `eliminar_cliente`
 - `eliminar_pedido`
@@ -225,6 +241,35 @@ Para poder ejecutar correctamente el proyecto, se recomienda disponer de lo sigu
 - **MySQL Workbench** o cualquier cliente compatible con MySQL
 - **IntelliJ IDEA** o cualquier IDE compatible con Java
 - Conexión configurada correctamente en `ConexionBD.java`
+- Dependencias JDBC añadidas al proyecto
+
+---
+
+## Instalación de dependencias en IntelliJ IDEA
+
+Antes de ejecutar el proyecto, es necesario añadir manualmente las librerías `.jar` utilizadas por la conexión JDBC.
+
+### Dependencias necesarias
+
+- `mysql-connector-j-8.0.33.jar`
+- `protobuf-java-3.21.9.jar`
+
+### Cómo añadirlas en IntelliJ IDEA
+
+1. Abrir el proyecto en IntelliJ IDEA.
+2. Ir a **File > Project Structure**.
+3. Entrar en **Modules**.
+4. Seleccionar el módulo del proyecto.
+5. Abrir la pestaña **Dependencies**.
+6. Pulsar el botón **+**.
+7. Seleccionar **JARs or Directories**.
+8. Buscar y añadir los archivos:
+    - `mysql-connector-j-8.0.33.jar`
+    - `protobuf-java-3.21.9.jar`
+9. Asegurarse de que ambas dependencias queden con alcance **Compile**.
+10. Pulsar **Apply** y después **OK**.
+
+Una vez añadidas, IntelliJ podrá compilar y ejecutar correctamente el proyecto con acceso a MySQL.
 
 ---
 
@@ -246,34 +291,137 @@ La conexión a la base de datos se realiza mediante la clase:
 
 `src/Util/ConexionBD.java`
 
-Antes de ejecutar el proyecto, es importante revisar y adaptar los siguientes datos según el entorno local:
-
-- URL de conexión
-- Nombre de la base de datos
-- Usuario
-- Contraseña
-
-### Ejemplo típico de configuración
+En este proyecto, la conexión está configurada actualmente con los siguientes datos:
 
 ```java
-private static final String URL = "jdbc:mysql://localhost:3306/producto3";
+private static final String URL =
+        "jdbc:mysql://autorack.proxy.rlwy.net:13802/producto3" +
+        "?connectionTimeZone=LOCAL" +
+        "&forceConnectionTimeZoneToSession=true";
+
 private static final String USER = "root";
-private static final String PASSWORD = "";
+private static final String PASSWORD = "SppuTCrhvoNHXhezDpJcwTINkOenYool";
 ```
+
+### Explicación de la configuración
+
+- **URL**: dirección de la base de datos MySQL remota utilizada por el proyecto.
+- **USER**: usuario de acceso a la base de datos.
+- **PASSWORD**: contraseña asociada al usuario.
+- **connectionTimeZone=LOCAL**: fuerza el uso de la zona horaria local del sistema.
+- **forceConnectionTimeZoneToSession=true**: aplica esa zona horaria a la sesión activa de la conexión.
+
+Esta configuración permite que las fechas y horas registradas en los pedidos queden alineadas con la hora local utilizada por la aplicación Java.
 
 ---
 
 ## Ejecución del proyecto
 
-Una vez preparada la base de datos, el proyecto puede ejecutarse desde el entorno Java configurado en el IDE.
+Una vez preparada la base de datos y añadidas las dependencias, el proyecto puede ejecutarse desde el entorno Java configurado en el IDE.
 
 ### Pasos recomendados
 
 1. Abrir el proyecto en IntelliJ IDEA.
-2. Comprobar que la conexión a MySQL está correctamente configurada.
-3. Ejecutar los scripts SQL necesarios.
-4. Compilar el proyecto.
-5. Ejecutar la clase principal correspondiente.
+2. Comprobar que las dependencias `.jar` están añadidas correctamente.
+3. Verificar que la conexión a MySQL está correctamente configurada en `ConexionBD.java`.
+4. Ejecutar los scripts SQL necesarios.
+5. Compilar el proyecto.
+6. Ejecutar la clase principal correspondiente.
+
+### Clase principal
+
+La ejecución del programa se realiza desde:
+
+`src/Vista/Main.java`
+
+---
+
+## Funcionamiento general del sistema
+
+El programa se ejecuta en modo consola y ofrece un menú principal con tres bloques de gestión:
+
+- Gestión de artículos
+- Gestión de clientes
+- Gestión de pedidos
+
+### Gestión de artículos
+
+Permite:
+
+- Añadir artículos.
+- Mostrar artículos.
+- Eliminar artículos.
+- Bloquear la eliminación si existen pedidos asociados.
+
+### Gestión de clientes
+
+Permite:
+
+- Añadir clientes.
+- Buscar clientes por email.
+- Mostrar todos los clientes.
+- Mostrar clientes estándar.
+- Mostrar clientes premium.
+- Eliminar clientes.
+- Bloquear la eliminación si existen pedidos asociados.
+
+### Gestión de pedidos
+
+Permite:
+
+- Añadir pedidos.
+- Eliminar pedidos cancelables.
+- Mostrar pedidos pendientes.
+- Mostrar pedidos enviados.
+- Cambiar manualmente el estado de un pedido.
+
+Además, el sistema:
+
+- Asigna fecha y hora al crear el pedido.
+- Calcula el estado del pedido según el tiempo de preparación.
+- Impide cancelar pedidos que ya no sean cancelables.
+- Sincroniza automáticamente el paso a estado **ENVIADO** cuando corresponde.
+
+---
+
+## Persistencia, JDBC, DAO y transacciones
+
+La persistencia del sistema se ha implementado utilizando **Java + JDBC** sobre **MySQL**, manteniendo el patrón de diseño **MVC** y separando la lógica de acceso a datos mediante **DAO** y **Factory**.
+
+### DAO
+
+Se utilizan objetos DAO para encapsular el acceso a base de datos de:
+
+- clientes
+- artículos
+- pedidos
+
+### Factory
+
+Se utiliza una factoría para instanciar los DAO y desacoplar la lógica del sistema del motor de persistencia.
+
+### JDBC seguro
+
+Se utilizan:
+
+- `PreparedStatement`
+- `CallableStatement`
+
+para evitar concatenaciones inseguras y reducir el riesgo de **SQL Injection**.
+
+### Transacciones
+
+Las operaciones DML principales incluyen control transaccional mediante:
+
+- `setAutoCommit(false)`
+- `commit()`
+- `rollback()`
+
+Esto se ha aplicado especialmente en operaciones de inserción, actualización y eliminación de las capas DAO MySQL.
+
+### Procedimientos almacenados
+
+El proyecto incluye procedimientos almacenados de inserción, actualización y eliminación en la base de datos, integrados como parte de la solución de persistencia del producto.
 
 ---
 
@@ -286,6 +434,8 @@ Este producto representa la fase del proyecto en la que se integra la persistenc
 - La organización por capas.
 - La preparación de procedimientos almacenados.
 - La creación de un entorno reproducible mediante datos de prueba.
+- La implementación de transacciones en operaciones DML relevantes.
+- La gestión automática y manual del estado de los pedidos.
 
 ---
 
@@ -299,6 +449,8 @@ Durante el desarrollo se ha intentado seguir una estructura clara y ordenada, pr
 - Preparación de scripts reutilizables.
 - Mantenimiento de integridad referencial.
 - Uso de procedimientos almacenados para mejorar la gestión SQL.
+- Control transaccional en operaciones críticas.
+- Validación funcional antes de realizar borrados sobre datos relacionados.
 
 ---
 

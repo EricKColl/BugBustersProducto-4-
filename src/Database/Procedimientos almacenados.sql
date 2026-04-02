@@ -1,12 +1,24 @@
+CREATE DATABASE IF NOT EXISTS producto3;
+USE producto3;
+
+DROP PROCEDURE IF EXISTS insertar_cliente;
+DROP PROCEDURE IF EXISTS actualizar_cliente;
+DROP PROCEDURE IF EXISTS eliminar_cliente;
+
+DROP PROCEDURE IF EXISTS insertar_articulo;
+DROP PROCEDURE IF EXISTS actualizar_articulo;
+DROP PROCEDURE IF EXISTS eliminar_articulo;
+
+DROP PROCEDURE IF EXISTS insertar_pedido;
+DROP PROCEDURE IF EXISTS actualizar_pedido;
+DROP PROCEDURE IF EXISTS eliminar_pedido;
+
+DELIMITER $$
+
 -- =========================================================
 -- PROCEDIMIENTOS ALMACENADOS - TABLA CLIENTES
 -- =========================================================
 
-DELIMITER $$
-
--- ---------------------------------------------------------
--- Insertar un nuevo cliente en la tabla clientes
--- ---------------------------------------------------------
 CREATE PROCEDURE insertar_cliente (
     IN p_email VARCHAR(100),
     IN p_nombre VARCHAR(100),
@@ -19,9 +31,6 @@ BEGIN
     VALUES (p_email, p_nombre, p_domicilio, p_nif, p_tipo_cliente);
 END $$
 
--- ---------------------------------------------------------
--- Actualizar los datos de un cliente existente
--- ---------------------------------------------------------
 CREATE PROCEDURE actualizar_cliente (
     IN p_id_cliente INT,
     IN p_email VARCHAR(100),
@@ -40,9 +49,6 @@ BEGIN
     WHERE id_cliente = p_id_cliente;
 END $$
 
--- ---------------------------------------------------------
--- Eliminar un cliente de la tabla clientes por su ID
--- ---------------------------------------------------------
 CREATE PROCEDURE eliminar_cliente (
     IN p_id_cliente INT
 )
@@ -51,14 +57,10 @@ BEGIN
     WHERE id_cliente = p_id_cliente;
 END $$
 
-
 -- =========================================================
 -- PROCEDIMIENTOS ALMACENADOS - TABLA ARTICULOS
 -- =========================================================
 
--- ---------------------------------------------------------
--- Insertar un nuevo artículo en la tabla articulos
--- ---------------------------------------------------------
 CREATE PROCEDURE insertar_articulo (
     IN p_codigo VARCHAR(50),
     IN p_descripcion VARCHAR(200),
@@ -72,7 +74,7 @@ BEGIN
         descripcion,
         precio_venta,
         gastos_envio,
-        `tiempo_preparacion minutos`
+        tiempo_preparacion
     )
     VALUES (
         p_codigo,
@@ -83,9 +85,6 @@ BEGIN
     );
 END $$
 
--- ---------------------------------------------------------
--- Actualizar los datos de un artículo existente
--- ---------------------------------------------------------
 CREATE PROCEDURE actualizar_articulo (
     IN p_id_articulo INT,
     IN p_codigo VARCHAR(50),
@@ -100,13 +99,10 @@ BEGIN
         descripcion = p_descripcion,
         precio_venta = p_precio_venta,
         gastos_envio = p_gastos_envio,
-        `tiempo_preparacion minutos` = p_tiempo_preparacion
+        tiempo_preparacion = p_tiempo_preparacion
     WHERE id_articulo = p_id_articulo;
 END $$
 
--- ---------------------------------------------------------
--- Eliminar un artículo de la tabla articulos por su ID
--- ---------------------------------------------------------
 CREATE PROCEDURE eliminar_articulo (
     IN p_id_articulo INT
 )
@@ -115,16 +111,10 @@ BEGIN
     WHERE id_articulo = p_id_articulo;
 END $$
 
-
 -- =========================================================
 -- PROCEDIMIENTOS ALMACENADOS - TABLA PEDIDOS
 -- =========================================================
 
--- ---------------------------------------------------------
--- Insertar un nuevo pedido en la tabla pedidos
--- La fecha y hora del pedido se asignan automáticamente
--- con la función NOW()
--- ---------------------------------------------------------
 CREATE PROCEDURE insertar_pedido (
     IN p_id_cliente INT,
     IN p_id_articulo INT,
@@ -133,12 +123,15 @@ CREATE PROCEDURE insertar_pedido (
 )
 BEGIN
     INSERT INTO pedidos (id_cliente, id_articulo, cantidad, fecha_hora, estado)
-    VALUES (p_id_cliente, p_id_articulo, p_cantidad, NOW(), p_estado);
+    VALUES (
+        p_id_cliente,
+        p_id_articulo,
+        p_cantidad,
+        DATE_ADD(NOW(), INTERVAL 2 HOUR),
+        p_estado
+    );
 END $$
 
--- ---------------------------------------------------------
--- Actualizar los datos principales de un pedido existente
--- ---------------------------------------------------------
 CREATE PROCEDURE actualizar_pedido (
     IN p_id_pedido INT,
     IN p_id_cliente INT,
@@ -155,9 +148,6 @@ BEGIN
     WHERE id_pedido = p_id_pedido;
 END $$
 
--- ---------------------------------------------------------
--- Eliminar un pedido de la tabla pedidos por su ID
--- ---------------------------------------------------------
 CREATE PROCEDURE eliminar_pedido (
     IN p_id_pedido INT
 )

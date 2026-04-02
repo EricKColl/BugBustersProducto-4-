@@ -1,8 +1,9 @@
 package DAO.MySQL;
 
 import DAO.Interfaces.ArticuloDAO;
-import Modelo.Articulo;
 import Excepciones.DAOException;
+import Modelo.Articulo;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,67 +11,67 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-// Usamos "implements" para obligarnos a cumplir el contrato de la interfaz
 public class ArticuloDAOMySQL implements ArticuloDAO {
 
-    // Conexión para hablar con MySQL
     private final Connection conexion;
 
     public ArticuloDAOMySQL(Connection conexion) {
         this.conexion = conexion;
     }
 
-    // MÉTODO INSERTAR
     @Override
     public void insertar(Articulo articulo) throws DAOException {
-        // Usamos ? en lugar de concatenar strings. Esto evita la "Inyección SQL" (hackeos).
         String sql = "INSERT INTO articulos (codigo, descripcion, precio_venta, gastos_envio, tiempo_preparacion) VALUES (?, ?, ?, ?, ?)";
 
-        // Usamos try-catch para que cierre PreparedStatement automáticamente
-        try (PreparedStatement stat = conexion.prepareStatement(sql)) {
+        boolean autoCommitAnterior;
+        try {
+            autoCommitAnterior = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
 
-            // Sustituimos las ? por los valores reales del artículo
-            stat.setString(1, articulo.getCodigo());
-            stat.setString(2, articulo.getDescripcion());
-            stat.setDouble(3, articulo.getPrecioVenta());
-            stat.setDouble(4, articulo.getGastosEnvio());
-            stat.setInt(5, articulo.getTiempoPreparacionMin());
+            try (PreparedStatement stat = conexion.prepareStatement(sql)) {
+                stat.setString(1, articulo.getCodigo());
+                stat.setString(2, articulo.getDescripcion());
+                stat.setDouble(3, articulo.getPrecioVenta());
+                stat.setDouble(4, articulo.getGastosEnvio());
+                stat.setInt(5, articulo.getTiempoPreparacionMin());
 
-            // executeUpdate() Devuelve las filas afectadas en un INSERT, DELETE, UPDATE
-            int filasAfectadas = stat.executeUpdate();
-            if (filasAfectadas == 0) {
-                SQLException e = new SQLException();
-                throw new DAOException("Error: No se ha insertado el artículo.", e);
+                int filasAfectadas = stat.executeUpdate();
+                if (filasAfectadas == 0) {
+                    conexion.rollback();
+                    throw new DAOException("Error: No se ha insertado el artículo.", new SQLException());
+                }
+
+                conexion.commit();
+
+            } catch (SQLException e) {
+                conexion.rollback();
+                throw new DAOException("Error de SQL al intentar guardar el artículo.", e);
+            } finally {
+                conexion.setAutoCommit(autoCommitAnterior);
             }
 
         } catch (SQLException e) {
-            // Atrapamos el error de MySQL y lanzamos el nuestro
-            throw new DAOException("Error de SQL al intentar guardar el artículo.", e);
+            throw new DAOException("Error al gestionar la transacción al insertar artículo.", e);
         }
     }
 
-    // MÉTODO OBTENER TODOS
     @Override
     public List<Articulo> obtenerTodos() throws DAOException {
         List<Articulo> listaArticulos = new ArrayList<>();
         String sql = "SELECT codigo, descripcion, precio_venta, gastos_envio, tiempo_preparacion FROM articulos";
 
         try (PreparedStatement stat = conexion.prepareStatement(sql);
-             ResultSet rs = stat.executeQuery()) { // executeQuery() se usa SOLO para SELECT
+             ResultSet rs = stat.executeQuery()) {
 
-            // rs.next() va leyendo fila por fila de la tabla en MySQL
             while (rs.next()) {
-                // Extraemos los datos de la fila actual...
                 String codigo = rs.getString("codigo");
                 String descripcion = rs.getString("descripcion");
                 double precioVenta = rs.getDouble("precio_venta");
                 double gastosEnvio = rs.getDouble("gastos_envio");
-                int tiemposPreparacionMin = rs.getInt("tiempo_preparacion");
+                int tiempoPreparacionMin = rs.getInt("tiempo_preparacion");
 
-                // Creamos un objeto Articulo de nuestro Modelo
-                Articulo a = new Articulo(codigo, descripcion, precioVenta, gastosEnvio, tiemposPreparacionMin);
-
-                listaArticulos.add(a);
+                Articulo articulo = new Articulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
+                listaArticulos.add(articulo);
             }
 
         } catch (SQLException e) {
@@ -79,20 +80,17 @@ public class ArticuloDAOMySQL implements ArticuloDAO {
 
         return listaArticulos;
     }
-    // MÉTODO OBTENER TODOS
+
     @Override
     public Articulo obtenerPorId(String codigo) throws DAOException {
         Articulo articuloEncontrado = null;
         String sql = "SELECT * FROM articulos WHERE codigo = ?";
 
         try (PreparedStatement stat = conexion.prepareStatement(sql)) {
-
             stat.setString(1, codigo);
 
             try (ResultSet rs = stat.executeQuery()) {
-
                 if (rs.next()) {
-                    // Si entra aquí, es que MySQL ha encontrado la fila
                     articuloEncontrado = new Articulo(
                             rs.getString("codigo"),
                             rs.getString("descripcion"),
@@ -107,14 +105,60 @@ public class ArticuloDAOMySQL implements ArticuloDAO {
             throw new DAOException("Error de SQL al buscar el artículo con código: " + codigo, e);
         }
 
-        // Devolvemos el artículo (o null si el if fue falso y no se encontró nada)
         return articuloEncontrado;
+    }
+
+    private boolean tienePedidosAsociados(String codigoArticulo) {
+        String sql = """
+                SELECT COUNT(*)
+                FROM pedidos p
+                JOIN articulos a ON p.id_articulo = a.id_articulo
+                WHERE a.codigo = ?
+                """;
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, codigoArticulo);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            return true;
+        }
+
+        return false;
     }
 
     @Override
     public void eliminar(String codigo) {
+        String sql = "DELETE FROM articulos WHERE codigo = ?";
 
+        if (tienePedidosAsociados(codigo)) {
+            System.err.println("No se puede eliminar el artículo porque tiene pedidos asociados.");
+            return;
+        }
+
+        boolean autoCommitAnterior;
+        try {
+            autoCommitAnterior = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
+
+            try (PreparedStatement stat = conexion.prepareStatement(sql)) {
+                stat.setString(1, codigo);
+                stat.executeUpdate();
+                conexion.commit();
+
+            } catch (SQLException e) {
+                conexion.rollback();
+                System.err.println("Error al eliminar artículo: " + e.getMessage());
+            } finally {
+                conexion.setAutoCommit(autoCommitAnterior);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error al gestionar la transacción al eliminar artículo: " + e.getMessage());
+        }
     }
-
-
 }

@@ -10,35 +10,16 @@ import Modelo.Excepciones.*;
 import java.util.List;
 import java.util.Scanner;
 
-/**
- * Clase que gestiona la interacción con el usuario a través de la consola.
- *
- * Se encarga de mostrar los menús, solicitar datos al usuario y mostrar los resultados.
- * En el patrón MVC, la Vista no accede directamente al Modelo, sino que se comunica
- * únicamente a través del Controlador.
- *
- * @author BugBusters
- * @version 1.0
- * @since 1.0
- */
 public class Vista {
 
     private final Scanner teclado;
     private final Controlador controlador;
 
-    /**
-     * Constructor que inicializa la vista.
-     * Crea el Scanner para leer de teclado y el Controlador para comunicarse con el modelo.
-     */
     public Vista() {
         teclado = new Scanner(System.in);
         controlador = new Controlador();
     }
 
-    /**
-     * Inicia el bucle principal del programa.
-     * Muestra el menú principal y procesa las opciones hasta que el usuario elija salir.
-     */
     public void iniciar() {
         int opcion;
 
@@ -69,12 +50,6 @@ public class Vista {
         } while (opcion != 0);
     }
 
-    /* =========================================================
-       =================== MENÚ PRINCIPAL ======================
-       ========================================================= */
-    /**
-     * Muestra el menú principal con las opciones principales disponibles.
-     */
     private void mostrarMenuPrincipal() {
         TerminalUI.showMenu("MENÚ PRINCIPAL", new String[]{
                 "1. Gestión de artículos",
@@ -84,10 +59,6 @@ public class Vista {
         });
     }
 
-    /**
-     * Gestiona el submenú de artículos.
-     * Permite añadir artículos o mostrar el listado completo.
-     */
     private void menuArticulos() {
         int opcion;
 
@@ -95,6 +66,7 @@ public class Vista {
             TerminalUI.showMenu("GESTIÓN DE ARTÍCULOS", new String[]{
                     "1. Añadir artículo",
                     "2. Mostrar artículos",
+                    "3. Eliminar artículo",
                     "0. Volver"
             });
 
@@ -107,6 +79,9 @@ public class Vista {
                 case 2:
                     mostrarArticulos();
                     break;
+                case 3:
+                    eliminarArticulo();
+                    break;
                 case 0:
                     break;
                 default:
@@ -116,10 +91,6 @@ public class Vista {
         } while (opcion != 0);
     }
 
-    /**
-     * Solicita los datos de un nuevo artículo y lo añade al sistema.
-     * Primero verifica si el código ya existe para evitar duplicados.
-     */
     private void anadirArticulo() {
         TerminalUI.sectionTitle("AÑADIR ARTÍCULO");
         String codigo = leerTextoNoVacio("Código: ");
@@ -150,28 +121,44 @@ public class Vista {
         TerminalUI.sciFiDivider();
     }
 
-    /**
-     * Muestra por pantalla todos los artículos registrados.
-     * Si no hay artículos, muestra un mensaje informativo.
-     */
     private void mostrarArticulos() {
         TerminalUI.sectionTitle("LISTADO DE ARTÍCULOS");
 
         try {
             TerminalUI.showArticlesTable(controlador.obtenerTodosArticulos());
-
         } catch (DAOException e) {
             TerminalUI.error("Error al conectar con la base de datos para obtener el listado: " + e.getMessage());
         }
     }
-/* =========================================================
-       ================= MENÚ DE CLIENTES =====================
-       ========================================================= */
 
-    /**
-     * Gestiona el submenú de clientes.
-     * Permite añadir, buscar, mostrar y eliminar clientes.
-     */
+    private void eliminarArticulo() {
+        TerminalUI.sectionTitle("ELIMINAR ARTÍCULO");
+
+        String codigo = leerTextoNoVacio("Introduce el código del artículo: ");
+
+        try {
+            Articulo articulo = controlador.buscarArticulo(codigo);
+
+            TerminalUI.info("Artículo localizado correctamente.");
+            TerminalUI.showArticleCard(articulo);
+
+            String conf = leerTextoNoVacio("¿Estás seguro de eliminar este artículo? (S/N): ");
+            if (!conf.equalsIgnoreCase("S")) {
+                TerminalUI.warning("Operación cancelada.");
+                return;
+            }
+
+            controlador.eliminarArticulo(codigo);
+
+            TerminalUI.success("Operación de eliminación procesada.");
+            TerminalUI.info("Si el artículo tenía pedidos asociados, el sistema habrá impedido su borrado.");
+            TerminalUI.spotlight("OPERACIÓN FINALIZADA");
+
+        } catch (RecursoNoEncontradoException | DAOException e) {
+            TerminalUI.exception(e.getMessage());
+        }
+    }
+
     private void menuClientes() {
         int opcion;
 
@@ -216,10 +203,6 @@ public class Vista {
         } while (opcion != 0);
     }
 
-    /**
-     * Solicita los datos de un nuevo cliente y lo añade al sistema.
-     * Valída el formato del email y que no exista previamente.
-     */
     private void anadirCliente() {
         TerminalUI.sectionTitle("AÑADIR CLIENTE");
         String email = leerTextoNoVacio("Email: ");
@@ -234,11 +217,10 @@ public class Vista {
         String nombre = leerTextoNoVacio("Nombre: ");
         String domicilio = leerTextoNoVacio("Domicilio: ");
         String nif = leerTextoNoVacio("NIF: ");
-        int tipoCliente = leerEntero("Tipo de cliente (1- Estándar, 2- Premium): "); // <--- Se llama tipoCliente
+        int tipoCliente = leerEntero("Tipo de cliente (1- Estándar, 2- Premium): ");
 
         try {
-            // Llamamos al método
-            controlador.anadirCliente(email, nombre, domicilio, nif, tipoCliente); // <--- Usamos tipoCliente
+            controlador.anadirCliente(email, nombre, domicilio, nif, tipoCliente);
             TerminalUI.success("¡Cliente añadido correctamente!");
         } catch (Exception e) {
             TerminalUI.error("No se pudo añadir: " + e.getMessage());
@@ -246,102 +228,69 @@ public class Vista {
         TerminalUI.sciFiDivider();
     }
 
-    /**
-     * Busca un cliente por su email y muestra sus datos.
-     */
     private void buscarCliente() {
         TerminalUI.sectionTitle("BUSCAR CLIENTE");
 
         String email = leerTextoNoVacio("Introduce el Email del cliente: ");
 
         try {
-            // Ahora el controlador busca, valida y devuelve el objeto
             Cliente clienteEncontrado = controlador.buscarCliente(email);
             TerminalUI.showClientCard(clienteEncontrado);
 
         } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) {
-            // Añadimos DAOException al catch para capturar errores de conexión
             TerminalUI.exception(e.getMessage());
         }
     }
 
-    /**
-     * Muestra todos los clientes registrados.
-     */
     private void obtenerTodosClientes() {
         TerminalUI.sectionTitle("LISTADO DE TODOS LOS CLIENTES");
 
         try {
-            // Intentamos obtener la lista del controlador
             List<Cliente> lista = controlador.obtenerTodosClientes();
-
-            // Se la pasamos al método que imprime (comprobando si está vacía)
             imprimirClientes("No hay clientes registrados.", lista);
 
         } catch (DAOException e) {
-            // Si hay error en la BD, lo mostramos con el estilo de tu UI
             TerminalUI.exception("Error al acceder a los datos: " + e.getMessage());
         }
 
         TerminalUI.sciFiDivider();
     }
 
-    /**
-     * Muestra solo los clientes de tipo Estándar.
-     */
     private void obtenerClientesEstandar() {
         TerminalUI.sectionTitle("LISTADO DE CLIENTES ESTÁNDAR");
         imprimirClientes("No hay clientes estándar registrados.", controlador.obtenerClientesEstandar());
     }
 
-    /**
-     * Muestra solo los clientes de tipo Premium.
-     */
     private void obtenerClientesPremium() {
         TerminalUI.sectionTitle("LISTADO DE CLIENTES PREMIUM");
         imprimirClientes("No hay clientes premium registrados.", controlador.obtenerClientesPremium());
     }
 
-    /**
-     * Elimina un cliente del sistema previa confirmación.
-     */
     private void eliminarCliente() {
         TerminalUI.sectionTitle("ELIMINAR CLIENTE");
 
         String email = leerTextoNoVacio("Introduce el Email del cliente: ");
 
         try {
-            // 1. Buscamos primero para mostrar los datos
             Cliente aEliminar = controlador.buscarCliente(email);
 
             TerminalUI.info("Cliente localizado correctamente.");
             TerminalUI.showClientCard(aEliminar);
 
-            // 2. OPCIONAL: Confirmación (Para evitar sustos)
             String conf = leerTextoNoVacio("¿Estás seguro de eliminar a este cliente? (S/N): ");
             if (!conf.equalsIgnoreCase("S")) return;
 
-            // 3. Llamada al controlador
             controlador.eliminarCliente(email);
 
-            TerminalUI.success("Cliente eliminado con éxito.");
+            TerminalUI.success("Operación de eliminación procesada.");
+            TerminalUI.info("Si el cliente tenía pedidos asociados, el sistema habrá impedido su borrado.");
             TerminalUI.spotlight("REGISTRO ELIMINADO DEL SISTEMA");
 
         } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) {
-            // Capturamos todos los posibles fallos (incluido el de MySQL)
             TerminalUI.exception(e.getMessage());
         }
     }
 
-
-    /* =========================================================
-        ================= MENÚ DE PEDIDOS =====================
-       ========================================================= */
-
-    /**
-     * Gestiona el submenú de pedidos.
-     * Permite añadir, eliminar y mostrar pedidos.
-     */
     private void menuPedidos() {
         int opcion;
 
@@ -351,6 +300,7 @@ public class Vista {
                     "2. Eliminar pedido",
                     "3. Mostrar pedidos pendientes",
                     "4. Mostrar pedidos enviados",
+                    "5. Cambiar estado de pedido",
                     "0. Volver"
             });
 
@@ -369,6 +319,9 @@ public class Vista {
                 case 4:
                     mostrarPedidosEnviados();
                     break;
+                case 5:
+                    cambiarEstadoPedido();
+                    break;
                 case 0:
                     break;
                 default:
@@ -378,15 +331,10 @@ public class Vista {
         } while (opcion != 0);
     }
 
-    /**
-     * Añade un nuevo pedido al sistema.
-     * Si el cliente no existe, lo crea automáticamente.
-     */
     private void anadirPedido() {
         TerminalUI.sectionTitle("AÑADIR PEDIDO");
         String emailCliente = leerTextoNoVacio("Email del cliente: ");
 
-        // 1. Validar formato del email
         try {
             controlador.emailValido(emailCliente);
         } catch (EmailInvalidoException e) {
@@ -396,20 +344,19 @@ public class Vista {
 
         Cliente cliente = null;
 
-        // 2. Busca cliente para comprobar si existe
         try {
             cliente = controlador.buscarCliente(emailCliente);
             TerminalUI.info("Cliente encontrado: " + cliente.getNombre());
 
-        } catch (EmailInvalidoException | DAOException e) {  //
+        } catch (EmailInvalidoException | DAOException e) {
             TerminalUI.exception(e.getMessage());
             return;
 
-        } catch (RecursoNoEncontradoException e) { // Si cliente no existe se pregunta si se quiere crear
+        } catch (RecursoNoEncontradoException e) {
             TerminalUI.warning("El cliente no existe. ¿Desea crearlo? (s/n): ");
             String respuesta = leerTextoNoVacio("");
 
-            if (respuesta.equalsIgnoreCase("s")) { // Si la respuesta es "s" se piden datos
+            if (respuesta.equalsIgnoreCase("s")) {
                 TerminalUI.info("Procedemos a la creación del cliente.");
                 String nombre = leerTextoNoVacio("Nombre: ");
                 String domicilio = leerTextoNoVacio("Domicilio: ");
@@ -417,20 +364,18 @@ public class Vista {
                 int tipoSeleccionado = leerEntero("Tipo cliente (1-Estándar, 2-Premium): ");
 
                 try {
-                    // El controlador lo crea y  lo devuelve ya listo con su ID
                     cliente = controlador.anadirCliente(emailCliente, nombre, domicilio, nif, tipoSeleccionado);
                     TerminalUI.success("Cliente creado correctamente.");
-                    // Ya no necesitas volver a llamar a buscarCliente() aquí.
                 } catch (TipoClienteInvalidoException | YaExisteException | DAOException | EmailInvalidoException ex) {
                     TerminalUI.exception(ex.getMessage());
                     return;
                 }
             } else {
-                TerminalUI.error("Operación cancelada."); // Si la respuesta es "n" se cancela
+                TerminalUI.error("Operación cancelada.");
                 return;
             }
         }
-        // Pedir y validar artículo
+
         TerminalUI.info("Procedemos a la creación del pedido.");
         String codigoArticulo = leerTextoNoVacio("Código del artículo: ");
 
@@ -446,7 +391,6 @@ public class Vista {
         int cantidad = leerEntero("Cantidad: ");
         int tiempoTotal = articulo.getTiempoPreparacionMin() * cantidad;
 
-        // Crear pedido
         try {
             Pedido pedido = controlador.anadirPedido(emailCliente, codigoArticulo, cantidad);
             TerminalUI.success("Pedido creado correctamente para " + cliente.getNombre() + ".");
@@ -454,14 +398,11 @@ public class Vista {
             TerminalUI.showOrderCard(pedido);
             TerminalUI.spotlight("OPERACIÓN COMPLETADA CON ÉXITO");
 
-        } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) { // <-- AÑADE DAOException AQUÍ
+        } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) {
             TerminalUI.exception(e.getMessage());
         }
     }
 
-    /**
-     * Elimina un pedido si aún puede cancelarse.
-     */
     private void eliminarPedido() {
         TerminalUI.sectionTitle("ELIMINAR PEDIDO");
 
@@ -471,14 +412,11 @@ public class Vista {
             controlador.eliminarPedido(numeroPedido);
             TerminalUI.success("Pedido eliminado correctamente.");
             TerminalUI.spotlight("PEDIDO CANCELADO");
-        } catch (RecursoNoEncontradoException | PedidoNoCancelableException | DAOException e) { // <-- AÑADE DAOException AQUÍ
+        } catch (RecursoNoEncontradoException | PedidoNoCancelableException | DAOException e) {
             TerminalUI.exception(e.getMessage());
         }
     }
 
-    /**
-     * Muestra los pedidos pendientes, opcionalmente filtrados por email.
-     */
     private void mostrarPedidosPendientes() {
         TerminalUI.sectionTitle("PEDIDOS PENDIENTES");
         String emailFiltro = leerTextoOpcional("Filtrar por email del cliente (dejar vacío para todos): ");
@@ -491,14 +429,11 @@ public class Vista {
             } else {
                 TerminalUI.showOrdersTable(pedidos);
             }
-        } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) { // <-- AÑADE DAOException AQUÍ
+        } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) {
             TerminalUI.exception(e.getMessage());
         }
     }
 
-    /**
-     * Muestra los pedidos enviados, opcionalmente filtrados por email.
-     */
     private void mostrarPedidosEnviados() {
         TerminalUI.sectionTitle("PEDIDOS ENVIADOS");
         String emailFiltro = leerTextoOpcional("Filtrar por email del cliente (dejar vacío para todos): ");
@@ -511,22 +446,39 @@ public class Vista {
                 TerminalUI.showOrdersTable(pedidos);
             }
 
-        } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) { // <-- AÑADE DAOException AQUÍ
+        } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) {
             TerminalUI.exception(e.getMessage());
         }
     }
 
-    /* =========================================================
-       ================== MÉTODOS AUXILIARES ===================
-       ========================================================= */
+    private void cambiarEstadoPedido() {
+        TerminalUI.sectionTitle("CAMBIAR ESTADO DE PEDIDO");
 
-    /**
-     * Lee una línea de texto introducida por el usuario con validación de no vacío.
-     * Reintenta hasta que se introduzca un valor que no sea vacío ni contenga solo espacios.
-     *
-     * @param mensaje Mensaje a mostrar al usuario para solicitar el dato
-     * @return El texto introducido por el usuario, nunca vacío
-     */
+        int numeroPedido = leerEntero("Número de pedido: ");
+        int opcionEstado = leerEntero("Nuevo estado (1-PENDIENTE, 2-ENVIADO): ");
+
+        String nuevoEstado;
+        switch (opcionEstado) {
+            case 1:
+                nuevoEstado = "PENDIENTE";
+                break;
+            case 2:
+                nuevoEstado = "ENVIADO";
+                break;
+            default:
+                TerminalUI.error("Opción de estado no válida.");
+                return;
+        }
+
+        try {
+            controlador.cambiarEstadoPedido(numeroPedido, nuevoEstado);
+            TerminalUI.success("Estado del pedido actualizado correctamente a " + nuevoEstado + ".");
+            TerminalUI.spotlight("ESTADO DEL PEDIDO ACTUALIZADO");
+        } catch (RecursoNoEncontradoException | DAOException e) {
+            TerminalUI.exception(e.getMessage());
+        }
+    }
+
     private String leerTextoNoVacio(String mensaje) {
         while (true) {
             TerminalUI.prompt(mensaje);
@@ -540,26 +492,11 @@ public class Vista {
         }
     }
 
-    /**
-     * Lee una línea de texto introducida por el usuario sin validación de contenido.
-     * Permite que el usuario introduzca texto vacío si es necesario.
-     * Útil para filtros opcionales o respuestas que pueden ser vacías.
-     *
-     * @param mensaje Mensaje a mostrar al usuario para solicitar el dato
-     * @return El texto introducido por el usuario (puede ser vacío)
-     */
     private String leerTextoOpcional(String mensaje) {
         TerminalUI.prompt(mensaje);
-        return teclado.nextLine().trim();  // Puede devolver cadena vacía
+        return teclado.nextLine().trim();
     }
 
-    /**
-     * Lee un número entero introducido por el usuario con validación.
-     * Reintenta hasta que se introduzca un valor válido.
-     *
-     * @param mensaje Mensaje a mostrar al usuario
-     * @return Número entero introducido
-     */
     private int leerEntero(String mensaje) {
         while (true) {
             TerminalUI.prompt(mensaje);
@@ -578,19 +515,6 @@ public class Vista {
         }
     }
 
-    /**
-     * Lee un número decimal introducido por el usuario.
-     *
-     * @param mensaje Mensaje a mostrar al usuario
-     * @return Número decimal introducido
-     */
-    /**
-     * Lee un número decimal introducido por el usuario con validación.
-     * Reintenta hasta que se introduzca un valor válido.
-     *
-     * @param mensaje Mensaje a mostrar al usuario
-     * @return Número decimal introducido
-     */
     private double leerDouble(String mensaje) {
         while (true) {
             TerminalUI.prompt(mensaje);
@@ -609,12 +533,6 @@ public class Vista {
         }
     }
 
-    /**
-     * Imprime una lista de clientes con un mensaje personalizado si está vacía.
-     *
-     * @param mensajePersonalizado Mensaje a mostrar si la lista está vacía
-     * @param clientes Lista de clientes a imprimir
-     */
     private void imprimirClientes(String mensajePersonalizado, List<Cliente> clientes) {
         if (clientes.isEmpty()) {
             TerminalUI.empty(mensajePersonalizado);
