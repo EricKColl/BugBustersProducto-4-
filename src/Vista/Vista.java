@@ -99,20 +99,22 @@ public class Vista {
 
             try {
                 controlador.buscarArticulo(codigo);
-
                 TerminalUI.error("El artículo con código '" + codigo + "' ya existe.");
                 return;
-
             } catch (RecursoNoEncontradoException e) {
-                // No hacemos nada: que no exista es lo que buscamos para poder insertarlo.
+                //
             }
+
             String descripcion = leerTextoNoVacio("Descripción: ");
             double precioVenta = leerDouble("Precio de venta: ");
             double gastosEnvio = leerDouble("Gastos de envío: ");
             int tiempoPreparacionMin = leerEntero("Tiempo de preparación (minutos): ");
 
-            controlador.anadirArticulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
+            Articulo a = controlador.anadirArticulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
+
             TerminalUI.success("¡Artículo añadido correctamente!");
+
+            TerminalUI.showArticleCard(a);
 
         } catch (DAOException e) {
             TerminalUI.exception(e.getMessage());
@@ -305,7 +307,7 @@ public class Vista {
                     "2. Eliminar pedido",
                     "3. Mostrar pedidos pendientes",
                     "4. Mostrar pedidos enviados",
-                    "5. Cambiar estado de pedido",
+                    "5. Cambiar estado de pedido a ENVIADO",
                     "0. Volver"
             });
 
@@ -325,7 +327,7 @@ public class Vista {
                     mostrarPedidosEnviados();
                     break;
                 case 5:
-                    cambiarEstadoPedido();
+                    marcarPedidoComoEnviado();
                     break;
                 case 0:
                     break;
@@ -459,32 +461,22 @@ public class Vista {
         }
     }
 
-    private void cambiarEstadoPedido() {
-        TerminalUI.sectionTitle("CAMBIAR ESTADO DE PEDIDO");
+    private void marcarPedidoComoEnviado() {
+        TerminalUI.sectionTitle("MARCAR PEDIDO COMO ENVIADO");
 
-        int numeroPedido = leerEntero("Número de pedido: ");
-        int opcionEstado = leerEntero("Nuevo estado (1-PENDIENTE, 2-ENVIADO): ");
-
-        String nuevoEstado;
-        switch (opcionEstado) {
-            case 1:
-                nuevoEstado = "PENDIENTE";
-                break;
-            case 2:
-                nuevoEstado = "ENVIADO";
-                break;
-            default:
-                TerminalUI.error("Opción de estado no válida.");
-                return;
-        }
+        int numeroPedido = leerEntero("Introduce el número de pedido: ");
 
         try {
-            controlador.cambiarEstadoPedido(numeroPedido, nuevoEstado);
-            TerminalUI.success("Estado del pedido actualizado correctamente a " + nuevoEstado + ".");
-            TerminalUI.spotlight("ESTADO DEL PEDIDO ACTUALIZADO");
+            controlador.marcarComoEnviado(numeroPedido);
+
+            TerminalUI.success("¡Estado actualizado!");
+            TerminalUI.info("El pedido #" + numeroPedido + " se ha marcado como ENVIADO.");
+            TerminalUI.spotlight("OPERACIÓN COMPLETADA");
+
         } catch (RecursoNoEncontradoException | DAOException e) {
             TerminalUI.exception(e.getMessage());
         }
+        TerminalUI.sciFiDivider();
     }
 
     private String leerTextoNoVacio(String mensaje) {

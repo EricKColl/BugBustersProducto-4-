@@ -105,24 +105,29 @@ public class Controlador {
         return pedidoDAO.obtenerPedidosEnviados(idFiltro);
     }
 
-    public void cambiarEstadoPedido(int idPedido, String nuevoEstado) throws DAOException, RecursoNoEncontradoException {
-        sincronizarEstadosAutomaticos();
-        validarEstadoPedido(nuevoEstado);
-
+    public void marcarComoEnviado(int idPedido) throws DAOException, RecursoNoEncontradoException {
         Pedido pedido = pedidoDAO.obtenerPorId(idPedido);
+
         if (pedido == null) {
             throw new RecursoNoEncontradoException("Pedido", String.valueOf(idPedido));
         }
 
-        pedidoDAO.actualizarEstado(idPedido, nuevoEstado);
+        if ("ENVIADO".equalsIgnoreCase(pedido.getEstado())) {
+            throw new DAOException("El pedido #" + idPedido + " ya consta como ENVIADO.");
+        }
+
+        pedidoDAO.actualizarEstado(idPedido, "ENVIADO");
     }
 
     private void sincronizarEstadosAutomaticos() throws DAOException {
         List<Pedido> pedidos = pedidoDAO.obtenerTodos();
 
         for (Pedido pedido : pedidos) {
-            if (pedido.debeMarcarseComoEnviadoAutomaticamente()) {
-                pedidoDAO.actualizarEstado(pedido.getNumeroPedido(), "ENVIADO");
+            if ("PENDIENTE".equalsIgnoreCase(pedido.getEstado())) {
+                if (pedido.debeMarcarseComoEnviadoAutomaticamente()) {
+                    pedidoDAO.actualizarEstado(pedido.getNumeroPedido(), "ENVIADO");
+                    pedido.setEstado("ENVIADO");
+                }
             }
         }
     }
@@ -202,16 +207,17 @@ public class Controlador {
         return articulo;
     }
 
-    public void anadirArticulo(String codigo, String descripcion, double precioVenta,
+    public Articulo anadirArticulo(String codigo, String descripcion, double precioVenta,
                                double gastosEnvio, int tiempoPreparacionMin)
             throws DAOException {
 
         if (articuloDAO.obtenerPorId(codigo) != null) {
-            throw new DAOException("Operación cancelada: El artículo con código '" + codigo + "' ya existe.");
+            throw new DAOException("El artículo con código '" + codigo + "' ya existe.");
         }
 
         Articulo articulo = new Articulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
         articuloDAO.insertar(articulo);
+        return articulo;
     }
 
     public void eliminarArticulo(String codigo) throws RecursoNoEncontradoException, DAOException {
