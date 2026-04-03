@@ -134,32 +134,43 @@ public class Controlador {
         }
     }
 
-    public Cliente anadirCliente(String email, String nombre, String domicilio, String nif, int tipoCliente)
-            throws EmailInvalidoException, TipoClienteInvalidoException, YaExisteException, DAOException {
+    public Cliente anadirCliente(String email, String nombre, String domicilio, String nif, int tipo)
+            throws EmailInvalidoException, YaExisteException, DAOException, TipoClienteInvalidoException {
+
+        emailValido(email);
+
         if (clienteDAO.existePorEmail(email)) {
             throw new YaExisteException("cliente", email);
         }
 
         Cliente nuevoCliente;
-        if (tipoCliente == 1) {
+        if (tipo == 2) {
+            nuevoCliente = new ClientePremium(email, nombre, domicilio, nif);
+        } else if (tipo == 1) {
             nuevoCliente = new ClienteEstandar(email, nombre, domicilio, nif);
         } else {
-            nuevoCliente = new ClientePremium(email, nombre, domicilio, nif);
+            throw new TipoClienteInvalidoException("El tipo de cliente debe ser 1 (Estándar) o 2 (Premium)");
         }
 
         clienteDAO.insertar(nuevoCliente);
+
         return clienteDAO.obtenerPorEmail(email);
+    }
+
+    // Este método le permite a la Vista preguntar si un email ya está usado
+    public boolean existeCliente(String email) throws DAOException {
+        return clienteDAO.existePorEmail(email);
     }
 
     public List<Cliente> obtenerTodosClientes() throws DAOException {
         return clienteDAO.obtenerTodos();
     }
 
-    public List<Cliente> obtenerClientesEstandar() {
+    public List<Cliente> obtenerClientesEstandar() throws DAOException {
         return clienteDAO.obtenerClientesEstandar();
     }
 
-    public List<Cliente> obtenerClientesPremium() {
+    public List<Cliente> obtenerClientesPremium() throws DAOException{
         return clienteDAO.obtenerClientesPremium();
     }
 
@@ -171,6 +182,7 @@ public class Controlador {
 
     public Cliente buscarCliente(String email) throws EmailInvalidoException, RecursoNoEncontradoException, DAOException {
         emailValido(email);
+
         Cliente cliente = clienteDAO.obtenerPorEmail(email);
 
         if (cliente == null) {
@@ -180,14 +192,10 @@ public class Controlador {
         return cliente;
     }
 
-    public void eliminarCliente(String email) throws EmailInvalidoException, RecursoNoEncontradoException, DAOException {
-        emailValido(email);
-        Cliente cliente = clienteDAO.obtenerPorEmail(email);
-        if (cliente == null) {
-            throw new RecursoNoEncontradoException("cliente", email);
+    public void eliminarCliente(Cliente cliente) throws DAOException {
+        if (cliente != null) {
+            clienteDAO.eliminar(cliente.getIdCliente());
         }
-
-        clienteDAO.eliminar(cliente.getIdCliente());
     }
 
     public Articulo buscarArticulo(String codigo) throws RecursoNoEncontradoException, DAOException {
