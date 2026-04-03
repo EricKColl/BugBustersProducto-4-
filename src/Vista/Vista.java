@@ -99,20 +99,22 @@ public class Vista {
 
             try {
                 controlador.buscarArticulo(codigo);
-
                 TerminalUI.error("El artículo con código '" + codigo + "' ya existe.");
                 return;
-
             } catch (RecursoNoEncontradoException e) {
-                // No hacemos nada: que no exista es lo que buscamos para poder insertarlo.
+                //
             }
+
             String descripcion = leerTextoNoVacio("Descripción: ");
             double precioVenta = leerDouble("Precio de venta: ");
             double gastosEnvio = leerDouble("Gastos de envío: ");
             int tiempoPreparacionMin = leerEntero("Tiempo de preparación (minutos): ");
 
-            controlador.anadirArticulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
+            Articulo a = controlador.anadirArticulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
+
             TerminalUI.success("¡Artículo añadido correctamente!");
+
+            TerminalUI.showArticleCard(a);
 
         } catch (DAOException e) {
             TerminalUI.exception(e.getMessage());

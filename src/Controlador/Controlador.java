@@ -207,16 +207,17 @@ public class Controlador {
         return articulo;
     }
 
-    public void anadirArticulo(String codigo, String descripcion, double precioVenta,
+    public Articulo anadirArticulo(String codigo, String descripcion, double precioVenta,
                                double gastosEnvio, int tiempoPreparacionMin)
             throws DAOException {
 
         if (articuloDAO.obtenerPorId(codigo) != null) {
-            throw new DAOException("Operación cancelada: El artículo con código '" + codigo + "' ya existe.");
+            throw new DAOException("El artículo con código '" + codigo + "' ya existe.");
         }
 
         Articulo articulo = new Articulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
         articuloDAO.insertar(articulo);
+        return articulo;
     }
 
     public void eliminarArticulo(String codigo) throws RecursoNoEncontradoException, DAOException {

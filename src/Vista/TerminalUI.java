@@ -316,10 +316,14 @@ public final class TerminalUI {
             String type = c.esPremium() ? "Premium" : "Estándar";
             String discount = String.format("%.0f%%", c.descuentoEnvio() * 100);
 
+            String nombre = truncate(c.getNombre(), 15);
+            String email = truncate(c.getEmail(), 15);
+            String dom = truncate(c.getDomicilio(), 15);
+
             List<String[]> rows = new ArrayList<>();
-            rows.add(new String[]{"Tipo: " + type, "Nombre: " + c.getNombre()});
-            rows.add(new String[]{"Email: " + c.getEmail(), "NIF: " + c.getNif()});
-            rows.add(new String[]{"Domicilio: " + c.getDomicilio(), "Cuota: " + money(c.calcularCuota())});
+            rows.add(new String[]{"Tipo: " + type, "Nombre: " + nombre});
+            rows.add(new String[]{"Email: " + email, "NIF: " + c.getNif()});
+            rows.add(new String[]{"Domicilio: " + dom, "Cuota: " + money(c.calcularCuota())});
             rows.add(new String[]{"Descuento: " + discount, ""});
 
             printGridCard("CLIENTE " + count, rows, ELECTRIC);
@@ -375,13 +379,22 @@ public final class TerminalUI {
     public static void showClientCard(Cliente client) {
         if (client == null) return;
 
+        String nombre = client.getNombre();
+        if (nombre.length() > 13) nombre = nombre.substring(0, 10) + "...";
+
+        String email = client.getEmail();
+        if (email.length() > 13) email = email.substring(0, 10) + "...";
+
+        String dom = client.getDomicilio();
+        if (dom.length() > 13) dom = dom.substring(0, 10) + "...";
+
         String type = client.esPremium() ? "Premium" : "Estándar";
         String discount = String.format("%.0f%%", client.descuentoEnvio() * 100);
 
         List<String[]> rows = new ArrayList<>();
-        rows.add(new String[]{"Tipo: " + type, "Nombre: " + client.getNombre()});
-        rows.add(new String[]{"Email: " + client.getEmail(), "NIF: " + client.getNif()});
-        rows.add(new String[]{"Domicilio: " + client.getDomicilio(), "Cuota: " + money(client.calcularCuota())});
+        rows.add(new String[]{"Tipo: " + type, "Nombre: " + nombre});
+        rows.add(new String[]{"Email: " + email, "NIF: " + client.getNif()});
+        rows.add(new String[]{"Domicilio: " + dom, "Cuota: " + money(client.calcularCuota())});
         rows.add(new String[]{"Descuento: " + discount, ""});
 
         printGridCard("CLIENTE ENCONTRADO", rows, CYAN);
@@ -390,13 +403,22 @@ public final class TerminalUI {
     public static void showOrderCard(Pedido order) {
         if (order == null) return;
 
+        String nombre = order.getCliente().getNombre();
+        if (nombre.length() > 13) nombre = nombre.substring(0, 10) + "...";
+
+        String desc = order.getArticulo().getDescripcion();
+        if (desc.length() > 13) desc = desc.substring(0, 10) + "...";
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-        String state = order.puedeCancelar() ? "Pendiente / cancelable" : "Enviado / no cancelable";
+
+        String state = order.puedeCancelar() ? "Pendiente/Can" : "Enviado/NoCan";
 
         List<String[]> rows = new ArrayList<>();
         rows.add(new String[]{"Número: " + order.getNumeroPedido(), "Cantidad: " + order.getCantidad()});
-        rows.add(new String[]{"Cliente: " + order.getCliente().getNombre(), "Total: " + money(order.calcularTotal())});
-        rows.add(new String[]{"Artículo: " + order.getArticulo().getDescripcion(), "Fecha: " + order.getFechaHora().format(formatter)});
+
+        rows.add(new String[]{"Cliente: " + nombre, "Total: " + money(order.calcularTotal())});
+        rows.add(new String[]{"Artículo: " + desc, "Fecha: " + order.getFechaHora().format(formatter)});
+
         rows.add(new String[]{"Estado: " + state, ""});
 
         printGridCard("PEDIDO CREADO", rows, CYAN);
@@ -405,9 +427,16 @@ public final class TerminalUI {
     public static void showArticleCard(Articulo article) {
         if (article == null) return;
 
+        String desc = article.getDescripcion();
+        if (desc.length() > 13) {
+            desc = desc.substring(0, 10) + "...";
+        }
+
         List<String[]> rows = new ArrayList<>();
         rows.add(new String[]{"Código: " + article.getCodigo(), "Precio: " + money(article.getPrecioVenta())});
-        rows.add(new String[]{"Descripción: " + article.getDescripcion(), "Envío: " + money(article.getGastosEnvio())});
+
+        rows.add(new String[]{"Descripción: " + desc, "Envío: " + money(article.getGastosEnvio())});
+
         rows.add(new String[]{"Preparación: " + article.getTiempoPreparacionMin() + " min", ""});
 
         printGridCard("ARTÍCULO SELECCIONADO", rows, CYAN);
