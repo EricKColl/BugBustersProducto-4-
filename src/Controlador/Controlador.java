@@ -140,9 +140,9 @@ public class Controlador {
 
         Cliente nuevoCliente;
         if (tipo == 2) {
-            nuevoCliente = new ClientePremium(nombre, domicilio, email, nif);
+            nuevoCliente = new ClientePremium(email, nombre, domicilio, nif);
         } else if (tipo == 1) {
-            nuevoCliente = new ClienteEstandar(nombre, domicilio, email, nif);
+            nuevoCliente = new ClienteEstandar(email, nombre, domicilio, nif);
         } else {
             throw new TipoClienteInvalidoException("El tipo de cliente debe ser 1 (Estándar) o 2 (Premium)");
         }
