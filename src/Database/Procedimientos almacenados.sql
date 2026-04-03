@@ -128,50 +128,33 @@ END $$
 -- PROCEDIMIENTOS ALMACENADOS - TABLA PEDIDOS
 -- =========================================================
 
-CREATE PROCEDURE insertar_pedido (
+DROP PROCEDURE IF EXISTS insertar_pedido;
+
+DELIMITER //
+
+CREATE PROCEDURE insertar_pedido(
     IN p_id_cliente INT,
     IN p_id_articulo INT,
     IN p_cantidad INT,
-    IN p_estado VARCHAR(20)
+    IN p_fecha_manual DATETIME, -- <--- NUEVO PARÁMETRO
+    IN p_estado ENUM('PENDIENTE', 'ENVIADO'),
+    OUT p_nuevo_id INT
 )
 BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
 
     START TRANSACTION;
-        INSERT INTO pedidos (id_cliente, id_articulo, cantidad, fecha_hora, estado)
-        VALUES (p_id_cliente, p_id_articulo, p_cantidad, DATE_ADD(NOW(), INTERVAL 2 HOUR), p_estado);
+
+    INSERT INTO pedidos (id_cliente, id_articulo, cantidad, fecha_hora, estado)
+    VALUES (p_id_cliente, p_id_articulo, p_cantidad, p_fecha_manual, p_estado);
+
+    SET p_nuevo_id = LAST_INSERT_ID();
+
     COMMIT;
-END $$
-
-CREATE PROCEDURE actualizar_pedido (
-    IN p_id_pedido INT,
-    IN p_id_cliente INT,
-    IN p_id_articulo INT,
-    IN p_cantidad INT,
-    IN p_estado VARCHAR(20)
-)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
-
-    START TRANSACTION;
-        UPDATE pedidos
-        SET id_cliente = p_id_cliente,
-            id_articulo = p_id_articulo,
-            cantidad = p_cantidad,
-            estado = p_estado
-        WHERE id_pedido = p_id_pedido;
-    COMMIT;
-END $$
-
-CREATE PROCEDURE eliminar_pedido (
-    IN p_id_pedido INT
-)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
-
-    START TRANSACTION;
-        DELETE FROM pedidos WHERE id_pedido = p_id_pedido;
-    COMMIT;
-END $$
+END //
 
 DELIMITER ;

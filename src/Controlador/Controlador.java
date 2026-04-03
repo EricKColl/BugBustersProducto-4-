@@ -105,24 +105,29 @@ public class Controlador {
         return pedidoDAO.obtenerPedidosEnviados(idFiltro);
     }
 
-    public void cambiarEstadoPedido(int idPedido, String nuevoEstado) throws DAOException, RecursoNoEncontradoException {
-        sincronizarEstadosAutomaticos();
-        validarEstadoPedido(nuevoEstado);
-
+    public void marcarComoEnviado(int idPedido) throws DAOException, RecursoNoEncontradoException {
         Pedido pedido = pedidoDAO.obtenerPorId(idPedido);
+
         if (pedido == null) {
             throw new RecursoNoEncontradoException("Pedido", String.valueOf(idPedido));
         }
 
-        pedidoDAO.actualizarEstado(idPedido, nuevoEstado);
+        if ("ENVIADO".equalsIgnoreCase(pedido.getEstado())) {
+            throw new DAOException("El pedido #" + idPedido + " ya consta como ENVIADO.");
+        }
+
+        pedidoDAO.actualizarEstado(idPedido, "ENVIADO");
     }
 
     private void sincronizarEstadosAutomaticos() throws DAOException {
         List<Pedido> pedidos = pedidoDAO.obtenerTodos();
 
         for (Pedido pedido : pedidos) {
-            if (pedido.debeMarcarseComoEnviadoAutomaticamente()) {
-                pedidoDAO.actualizarEstado(pedido.getNumeroPedido(), "ENVIADO");
+            if ("PENDIENTE".equalsIgnoreCase(pedido.getEstado())) {
+                if (pedido.debeMarcarseComoEnviadoAutomaticamente()) {
+                    pedidoDAO.actualizarEstado(pedido.getNumeroPedido(), "ENVIADO");
+                    pedido.setEstado("ENVIADO");
+                }
             }
         }
     }

@@ -20,12 +20,9 @@ public class Pedido {
     }
 
     public boolean puedeCancelar() {
-        if (!"PENDIENTE".equalsIgnoreCase(this.estado)) {
-            return false;
-        }
-
-        LocalDateTime limiteCancelacion = this.fechaHora.plusMinutes(this.articulo.getTiempoPreparacionMin());
-        return !LocalDateTime.now().isAfter(limiteCancelacion);
+        if (!"PENDIENTE".equalsIgnoreCase(this.estado)) return false;
+        LocalDateTime limite = this.fechaHora.plusMinutes(this.articulo.getTiempoPreparacionMin());
+        return LocalDateTime.now().isBefore(limite);
     }
 
     public boolean debeMarcarseComoEnviadoAutomaticamente() {
