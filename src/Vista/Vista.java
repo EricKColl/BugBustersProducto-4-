@@ -103,7 +103,7 @@ public class Vista {
             int tiempoPreparacionMin = leerEntero("Tiempo de preparación (minutos): ");
 
             controlador.anadirArticulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
-            TerminalUI.success("Artículo añadido correctamente.");
+            TerminalUI.success("¡Artículo añadido correctamente!");
 
         } catch (DAOException e) {
             TerminalUI.exception(e.getMessage());
@@ -140,8 +140,7 @@ public class Vista {
 
             controlador.eliminarArticulo(codigo);
 
-            TerminalUI.success("Operación de eliminación procesada.");
-            TerminalUI.info("Si el artículo tenía pedidos asociados, el sistema habrá impedido su borrado.");
+            TerminalUI.success("¡Artículo eliminado!");
             TerminalUI.spotlight("OPERACIÓN FINALIZADA");
 
         } catch (RecursoNoEncontradoException | DAOException e) {
@@ -362,7 +361,7 @@ public class Vista {
 
                 try {
                     cliente = controlador.anadirCliente(emailCliente, nombre, domicilio, nif, tipoSeleccionado);
-                    TerminalUI.success("Cliente creado correctamente.");
+                    TerminalUI.success("¡Cliente creado correctamente!");
                 } catch (TipoClienteInvalidoException | DAOException | EmailInvalidoException ex) {
                     TerminalUI.exception(ex.getMessage());
                     return;
@@ -407,7 +406,7 @@ public class Vista {
 
         try {
             controlador.eliminarPedido(numeroPedido);
-            TerminalUI.success("Pedido eliminado correctamente.");
+            TerminalUI.success("¡Pedido eliminado correctamente!");
             TerminalUI.spotlight("PEDIDO CANCELADO");
         } catch (RecursoNoEncontradoException | PedidoNoCancelableException | DAOException e) {
             TerminalUI.exception(e.getMessage());
