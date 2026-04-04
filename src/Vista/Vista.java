@@ -397,8 +397,9 @@ public class Vista {
 
             int cantidad = leerEntero("Cantidad: ");
 
-            controlador.anadirPedido(emailCliente, codigoArticulo, cantidad);
+            Pedido nuevoPedido = controlador.anadirPedido(emailCliente, codigoArticulo, cantidad);
             TerminalUI.success("¡Pedido añadido correctamente!");
+            TerminalUI.showOrderCard(nuevoPedido);
 
         } catch (RecursoNoEncontradoException | DAOException | EmailInvalidoException e) {
             TerminalUI.exception(e.getMessage());

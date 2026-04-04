@@ -19,12 +19,12 @@ INSERT INTO clientes (email, nombre, domicilio, nif, tipo_cliente) VALUES
 -- ARTICULOS
 -- =========================================================
 INSERT INTO articulos (codigo, descripcion, precio_venta, gastos_envio, tiempo_preparacion) VALUES
-('A001', 'Monitor Samsung 27" QHD', 249.99, 9.50, 24),
-('A002', 'Teclado Logitech K120 USB', 19.99, 4.99, 24),
-('A003', 'Ratón Logitech G502 Gaming', 59.99, 5.99, 24),
-('A004', 'Portátil Dell 15 5520', 799.99, 12.50, 48),
-('A005', 'Auriculares Sony WH-1000XM5', 349.99, 6.99, 24),
-('A006', 'Disco SSD Samsung 1TB', 109.99, 5.50, 24);
+('A001', 'Monitor Samsung 27" QHD', 249.99, 9.50, 10),
+('A002', 'Teclado Logitech K120 USB', 19.99, 4.99, 20),
+('A003', 'Ratón Logitech G502 Gaming', 59.99, 5.99, 10),
+('A004', 'Portátil Dell 15 5520', 799.99, 12.50, 30),
+('A005', 'Auriculares Sony WH-1000XM5', 349.99, 6.99, 10),
+('A006', 'Disco SSD Samsung 1TB', 109.99, 5.50, 20);
 
 -- =========================================================
 -- PEDIDOS

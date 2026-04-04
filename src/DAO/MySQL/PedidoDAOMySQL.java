@@ -212,8 +212,12 @@ public class PedidoDAOMySQL implements PedidoDAO {
             ps.setString(1, nuevoEstado);
             ps.setInt(2, idPedido);
             ps.executeUpdate();
+
+            if (!conexion.getAutoCommit()) {
+                conexion.commit();
+            }
         } catch (SQLException e) {
-            throw new DAOException("Error al actualizar el estado del pedido en la base de datos.", e);
+            throw new DAOException("Error al actualizar el estado del pedido.", e);
         }
     }
 }
