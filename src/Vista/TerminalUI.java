@@ -1,6 +1,5 @@
 package Vista;
 
-
 import Modelo.Articulo;
 import Modelo.Cliente;
 import Modelo.Pedido;
@@ -25,15 +24,19 @@ public final class TerminalUI {
     public static final String WHITE = "\u001B[97m";
     public static final String SOFT_BLUE = "\u001B[38;5;117m";
 
-    private static final int MENU_WIDTH = 56;
+    // Menús y banners principales
+    private static final int MENU_WIDTH = 68;
 
-    // Ajuste fino del separador central
-    private static final int DIVIDER_WIDTH = 44;
+    private static final int DIVIDER_WIDTH = 56;
     private static final String DIVIDER_LEFT_MARGIN = "       ";
 
-    // Dos celdas por fila, cada una con "Etiqueta: valor"
-    private static final int BOX_CELL_WIDTH = 27;
+    // Tarjetas normales
+    private static final int BOX_CELL_WIDTH = 34;
     private static final int GRID_INNER_WIDTH = BOX_CELL_WIDTH + BOX_CELL_WIDTH + 1;
+
+    // Tarjetas de clientes (más anchas)
+    private static final int CLIENT_BOX_CELL_WIDTH = 50;
+    private static final int CLIENT_GRID_INNER_WIDTH = CLIENT_BOX_CELL_WIDTH + CLIENT_BOX_CELL_WIDTH + 1;
 
     private static String color(String text, String color) {
         return color + text + RESET;
@@ -51,7 +54,7 @@ public final class TerminalUI {
     }
 
     private static String money(double value) {
-        return String.format("%.2f €", value);
+        return String.format("%.2f €", value).replace('.', ',');
     }
 
     private static String rightPad(String text, int width) {
@@ -81,6 +84,55 @@ public final class TerminalUI {
             text = truncate(text, width);
         }
         return " " + text + repeat(" ", width - text.length() - 1);
+    }
+
+    private static String buildTableTop(int... widths) {
+        StringBuilder sb = new StringBuilder("┌");
+        for (int i = 0; i < widths.length; i++) {
+            sb.append(repeat("─", widths[i]));
+            sb.append(i < widths.length - 1 ? "┬" : "┐");
+        }
+        return sb.toString();
+    }
+
+    private static String buildTableMid(int... widths) {
+        StringBuilder sb = new StringBuilder("├");
+        for (int i = 0; i < widths.length; i++) {
+            sb.append(repeat("─", widths[i]));
+            sb.append(i < widths.length - 1 ? "┼" : "┤");
+        }
+        return sb.toString();
+    }
+
+    private static String buildTableBottom(int... widths) {
+        StringBuilder sb = new StringBuilder("└");
+        for (int i = 0; i < widths.length; i++) {
+            sb.append(repeat("─", widths[i]));
+            sb.append(i < widths.length - 1 ? "┴" : "┘");
+        }
+        return sb.toString();
+    }
+
+    private static String buildTableHeader(int[] widths, String... headers) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < widths.length; i++) {
+            sb.append(color("│", ELECTRIC));
+            String value = i < headers.length ? headers[i] : "";
+            sb.append(center(value, widths[i]));
+        }
+        sb.append(color("│", ELECTRIC));
+        return sb.toString();
+    }
+
+    private static String buildTableRow(int[] widths, String... values) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < widths.length; i++) {
+            sb.append(color("│", ELECTRIC));
+            String value = i < values.length ? values[i] : "";
+            sb.append(padCell(value, widths[i]));
+        }
+        sb.append(color("│", ELECTRIC));
+        return sb.toString();
     }
 
     private static String topDouble(String borderColor) {
@@ -120,6 +172,8 @@ public final class TerminalUI {
                 + center(truncate(text, MENU_WIDTH), MENU_WIDTH)
                 + color("│", borderColor);
     }
+
+    // ---------- TARJETAS NORMALES ----------
 
     private static String gridTop(String borderColor) {
         return color(
@@ -189,6 +243,78 @@ public final class TerminalUI {
         }
 
         System.out.println(gridBottom(borderColor));
+    }
+
+    // ---------- TARJETAS CLIENTE MÁS ANCHAS ----------
+
+    private static String clientGridTop(String borderColor) {
+        return color(
+                "┌" + repeat("─", CLIENT_BOX_CELL_WIDTH) + "┬" + repeat("─", CLIENT_BOX_CELL_WIDTH) + "┐",
+                borderColor
+        );
+    }
+
+    private static String clientGridHeaderSep(String borderColor) {
+        return color("├" + repeat("─", CLIENT_GRID_INNER_WIDTH) + "┤", borderColor);
+    }
+
+    private static String clientGridMiddle(String borderColor) {
+        return color(
+                "├" + repeat("─", CLIENT_BOX_CELL_WIDTH) + "┼" + repeat("─", CLIENT_BOX_CELL_WIDTH) + "┤",
+                borderColor
+        );
+    }
+
+    private static String clientGridBottom(String borderColor) {
+        return color(
+                "└" + repeat("─", CLIENT_BOX_CELL_WIDTH) + "┴" + repeat("─", CLIENT_BOX_CELL_WIDTH) + "┘",
+                borderColor
+        );
+    }
+
+    private static String clientGridTitle(String title, String borderColor) {
+        return color("│", borderColor)
+                + center(truncate(title, CLIENT_GRID_INNER_WIDTH), CLIENT_GRID_INNER_WIDTH)
+                + color("│", borderColor);
+    }
+
+    private static String clientGridRow(String leftCell, String rightCell, String borderColor) {
+        return color("│", borderColor)
+                + padCell(truncate(leftCell, CLIENT_BOX_CELL_WIDTH), CLIENT_BOX_CELL_WIDTH)
+                + color("│", borderColor)
+                + padCell(truncate(rightCell, CLIENT_BOX_CELL_WIDTH), CLIENT_BOX_CELL_WIDTH)
+                + color("│", borderColor);
+    }
+
+    private static String clientGridRowFull(String content, String borderColor) {
+        return color("│", borderColor)
+                + rightPad(truncate(content, CLIENT_GRID_INNER_WIDTH), CLIENT_GRID_INNER_WIDTH)
+                + color("│", borderColor);
+    }
+
+    private static void printClientGridCard(String title, List<String[]> rows, String borderColor) {
+        System.out.println(clientGridTop(borderColor));
+        System.out.println(clientGridTitle(title, borderColor));
+        System.out.println(clientGridHeaderSep(borderColor));
+
+        for (int i = 0; i < rows.size(); i++) {
+            String[] row = rows.get(i);
+
+            String left = row.length > 0 ? row[0] : "";
+            String right = row.length > 1 ? row[1] : "";
+
+            if (!left.isEmpty() && right.isEmpty()) {
+                System.out.println(clientGridRowFull(left, borderColor));
+            } else {
+                System.out.println(clientGridRow(left, right, borderColor));
+            }
+
+            if (i < rows.size() - 1) {
+                System.out.println(clientGridMiddle(borderColor));
+            }
+        }
+
+        System.out.println(clientGridBottom(borderColor));
     }
 
     public static void showWelcome() {
@@ -262,6 +388,7 @@ public final class TerminalUI {
     public static void empty(String message) {
         System.out.println(color("[SIN DATOS] ", YELLOW) + color(message, SILVER));
     }
+
     public static void exception(String message) {
         System.out.println(color("[EXCEPTION]", RED) + " " + color(message, WHITE));
     }
@@ -279,29 +406,31 @@ public final class TerminalUI {
             return;
         }
 
-        System.out.println(color("┌────────────┬──────────────────────────────┬────────────┬────────────┬────────────┐", ELECTRIC));
-        System.out.println(color("│", ELECTRIC) + center("CÓDIGO", 12) + color("│", ELECTRIC)
-                + center("DESCRIPCIÓN", 30) + color("│", ELECTRIC)
-                + center("PRECIO", 12) + color("│", ELECTRIC)
-                + center("ENVÍO", 12) + color("│", ELECTRIC)
-                + center("PREP.", 12) + color("│", ELECTRIC));
-        System.out.println(color("├────────────┼──────────────────────────────┼────────────┼────────────┼────────────┤", ELECTRIC));
+        int[] widths = {12, 42, 12, 12, 12, 10};
+
+        System.out.println(color(buildTableTop(widths), ELECTRIC));
+        System.out.println(buildTableHeader(widths,
+                "CÓDIGO",
+                "DESCRIPCIÓN",
+                "PRECIO",
+                "ENVÍO",
+                "PREP.",
+                "STOCK"
+        ));
+        System.out.println(color(buildTableMid(widths), ELECTRIC));
 
         for (Articulo a : articles) {
-            System.out.println(color("│", ELECTRIC)
-                    + padCell(truncate(a.getCodigo(), 12), 12)
-                    + color("│", ELECTRIC)
-                    + padCell(truncate(a.getDescripcion(), 30), 30)
-                    + color("│", ELECTRIC)
-                    + padCell(money(a.getPrecioVenta()), 12)
-                    + color("│", ELECTRIC)
-                    + padCell(money(a.getGastosEnvio()), 12)
-                    + color("│", ELECTRIC)
-                    + padCell(a.getTiempoPreparacionMin() + " min", 12)
-                    + color("│", ELECTRIC));
+            System.out.println(buildTableRow(widths,
+                    a.getCodigo(),
+                    a.getDescripcion(),
+                    money(a.getPrecioVenta()),
+                    money(a.getGastosEnvio()),
+                    a.getTiempoPreparacionMin() + " min",
+                    String.valueOf(a.getCantidadDisponible())
+            ));
         }
 
-        System.out.println(color("└────────────┴──────────────────────────────┴────────────┴────────────┴────────────┘", ELECTRIC));
+        System.out.println(color(buildTableBottom(widths), ELECTRIC));
     }
 
     public static void showClientsTable(List<Cliente> clients) {
@@ -316,17 +445,13 @@ public final class TerminalUI {
             String type = c.esPremium() ? "Premium" : "Estándar";
             String discount = String.format("%.0f%%", c.descuentoEnvio() * 100);
 
-            String nombre = truncate(c.getNombre(), 15);
-            String email = truncate(c.getEmail(), 15);
-            String dom = truncate(c.getDomicilio(), 15);
-
             List<String[]> rows = new ArrayList<>();
-            rows.add(new String[]{"Tipo: " + type, "Nombre: " + nombre});
-            rows.add(new String[]{"Email: " + email, "NIF: " + c.getNif()});
-            rows.add(new String[]{"Domicilio: " + dom, "Cuota: " + money(c.calcularCuota())});
+            rows.add(new String[]{"Tipo: " + type, "Nombre: " + c.getNombre()});
+            rows.add(new String[]{"Email: " + c.getEmail(), "NIF: " + c.getNif()});
+            rows.add(new String[]{"Domicilio: " + c.getDomicilio(), "Cuota: " + money(c.calcularCuota())});
             rows.add(new String[]{"Descuento: " + discount, ""});
 
-            printGridCard("CLIENTE " + count, rows, ELECTRIC);
+            printClientGridCard("CLIENTE " + count, rows, ELECTRIC);
             count++;
         }
     }
@@ -337,88 +462,80 @@ public final class TerminalUI {
             return;
         }
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        int[] widths = {8, 30, 34, 8, 18, 12, 14};
 
-        System.out.println(color("┌────────┬──────────────────────┬──────────────────────────┬──────────┬──────────────────┬────────────┬──────────────┐", ELECTRIC));
-        System.out.println(color("│", ELECTRIC) + center("NÚMERO", 8) + color("│", ELECTRIC)
-                + center("CLIENTE", 22) + color("│", ELECTRIC)
-                + center("ARTÍCULO", 26) + color("│", ELECTRIC)
-                + center("CANT.", 10) + color("│", ELECTRIC)
-                + center("FECHA", 18) + color("│", ELECTRIC)
-                + center("TOTAL", 12) + color("│", ELECTRIC)
-                + center("ESTADO", 14) + color("│", ELECTRIC));
-        System.out.println(color("├────────┼──────────────────────┼──────────────────────────┼──────────┼──────────────────┼────────────┼──────────────┤", ELECTRIC));
+        System.out.println(color(buildTableTop(widths), ELECTRIC));
+        System.out.println(buildTableHeader(widths,
+                "NÚMERO",
+                "CLIENTE",
+                "ARTÍCULO",
+                "CANT.",
+                "FECHA",
+                "TOTAL",
+                "ESTADO"
+        ));
+        System.out.println(color(buildTableMid(widths), ELECTRIC));
 
         for (Pedido p : orders) {
-            String nombreCliente = p.getCliente().getNombre();
-            String descArticulo = p.getArticulo().getDescripcion();
+            String nombreCliente = p.getCliente() != null ? p.getCliente().getNombre() : "N/D";
+            String descArticulo = p.getArticulo() != null ? p.getArticulo().getDescripcion() : "N/D";
             String fechaFormateada = p.getFechaHora().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-
             double total = p.calcularTotal();
 
-            System.out.println(color("│", ELECTRIC)
-                    + padCell(String.valueOf(p.getNumeroPedido()), 8)
-                    + color("│", ELECTRIC)
-                    + padCell(truncate(nombreCliente, 22), 22)
-                    + color("│", ELECTRIC)
-                    + padCell(truncate(descArticulo, 26), 26)
-                    + color("│", ELECTRIC)
-                    + padCell(String.valueOf(p.getCantidad()), 10)
-                    + color("│", ELECTRIC)
-                    + padCell(fechaFormateada, 18)
-                    + color("│", ELECTRIC)
-                    + padCell(money(total), 12)
-                    + color("│", ELECTRIC)
-                    + padCell(p.puedeCancelar() ? "Pendiente" : "Enviado", 14)
-                    + color("│", ELECTRIC));
+            String estado = p.getEstado();
+            if (estado == null || estado.isBlank()) {
+                estado = p.puedeCancelar() ? "Pendiente" : "Enviado";
+            } else {
+                estado = estado.substring(0, 1).toUpperCase() + estado.substring(1).toLowerCase();
+            }
+
+            System.out.println(buildTableRow(widths,
+                    String.valueOf(p.getNumeroPedido()),
+                    nombreCliente,
+                    descArticulo,
+                    String.valueOf(p.getCantidad()),
+                    fechaFormateada,
+                    money(total),
+                    estado
+            ));
         }
 
-        System.out.println(color("└────────┴──────────────────────┴──────────────────────────┴──────────┴──────────────────┴────────────┴──────────────┘", ELECTRIC));
+        System.out.println(color(buildTableBottom(widths), ELECTRIC));
     }
 
     public static void showClientCard(Cliente client) {
         if (client == null) return;
 
-        String nombre = client.getNombre();
-        if (nombre.length() > 13) nombre = nombre.substring(0, 10) + "...";
-
-        String email = client.getEmail();
-        if (email.length() > 13) email = email.substring(0, 10) + "...";
-
-        String dom = client.getDomicilio();
-        if (dom.length() > 13) dom = dom.substring(0, 10) + "...";
-
         String type = client.esPremium() ? "Premium" : "Estándar";
         String discount = String.format("%.0f%%", client.descuentoEnvio() * 100);
 
         List<String[]> rows = new ArrayList<>();
-        rows.add(new String[]{"Tipo: " + type, "Nombre: " + nombre});
-        rows.add(new String[]{"Email: " + email, "NIF: " + client.getNif()});
-        rows.add(new String[]{"Domicilio: " + dom, "Cuota: " + money(client.calcularCuota())});
+        rows.add(new String[]{"Tipo: " + type, "Nombre: " + client.getNombre()});
+        rows.add(new String[]{"Email: " + client.getEmail(), "NIF: " + client.getNif()});
+        rows.add(new String[]{"Domicilio: " + client.getDomicilio(), "Cuota: " + money(client.calcularCuota())});
         rows.add(new String[]{"Descuento: " + discount, ""});
 
-        printGridCard("CLIENTE ENCONTRADO", rows, CYAN);
+        printClientGridCard("CLIENTE ENCONTRADO", rows, CYAN);
     }
 
     public static void showOrderCard(Pedido order) {
         if (order == null) return;
 
-        String nombre = order.getCliente().getNombre();
-        if (nombre.length() > 13) nombre = nombre.substring(0, 10) + "...";
-
-        String desc = order.getArticulo().getDescripcion();
-        if (desc.length() > 13) desc = desc.substring(0, 10) + "...";
-
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-        String state = order.puedeCancelar() ? "Pendiente/Can" : "Enviado/NoCan";
+        String state;
+        if (order.getEstado() == null || order.getEstado().isBlank()) {
+            state = order.puedeCancelar() ? "Pendiente / cancelable" : "Enviado / no cancelable";
+        } else if ("PENDIENTE".equalsIgnoreCase(order.getEstado())) {
+            state = "Pendiente / cancelable";
+        } else {
+            state = "Enviado / no cancelable";
+        }
 
         List<String[]> rows = new ArrayList<>();
         rows.add(new String[]{"Número: " + order.getNumeroPedido(), "Cantidad: " + order.getCantidad()});
-
-        rows.add(new String[]{"Cliente: " + nombre, "Total: " + money(order.calcularTotal())});
-        rows.add(new String[]{"Artículo: " + desc, "Fecha: " + order.getFechaHora().format(formatter)});
-
+        rows.add(new String[]{"Cliente: " + order.getCliente().getNombre(), "Total: " + money(order.calcularTotal())});
+        rows.add(new String[]{"Artículo: " + order.getArticulo().getDescripcion(), "Fecha: " + order.getFechaHora().format(formatter)});
         rows.add(new String[]{"Estado: " + state, ""});
 
         printGridCard("PEDIDO CREADO", rows, CYAN);
@@ -427,19 +544,11 @@ public final class TerminalUI {
     public static void showArticleCard(Articulo article) {
         if (article == null) return;
 
-        String desc = article.getDescripcion();
-        if (desc.length() > 13) {
-            desc = desc.substring(0, 10) + "...";
-        }
-
         List<String[]> rows = new ArrayList<>();
         rows.add(new String[]{"Código: " + article.getCodigo(), "Precio: " + money(article.getPrecioVenta())});
-
-        rows.add(new String[]{"Descripción: " + desc, "Envío: " + money(article.getGastosEnvio())});
-
-        rows.add(new String[]{"Preparación: " + article.getTiempoPreparacionMin() + " min", ""});
+        rows.add(new String[]{"Descripción: " + article.getDescripcion(), "Envío: " + money(article.getGastosEnvio())});
+        rows.add(new String[]{"Preparación: " + article.getTiempoPreparacionMin() + " min", "Stock: " + article.getCantidadDisponible()});
 
         printGridCard("ARTÍCULO SELECCIONADO", rows, CYAN);
     }
-
 }

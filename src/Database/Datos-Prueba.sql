@@ -1,9 +1,23 @@
+-- =========================================================
+-- BUGBUSTERS · PRODUCTO 3
+-- DATOS DE PRUEBA
+-- =========================================================
+-- Este script inserta datos de prueba coherentes con la
+-- versión actual del proyecto.
+--
+-- Orden recomendado de ejecución:
+--   1. Tablas Base de Datos.sql
+--   2. Procedimientos almacenados.sql
+--   3. Datos-Prueba.sql
+--
+-- Importante:
+-- Los artículos se insertan con stock inicial.
+-- Los pedidos se crean llamando al procedimiento insertar_pedido,
+-- por lo que el stock se descuenta automáticamente.
+-- =========================================================
+
 USE producto3;
 
--- =========================================================
--- DATOS DE PRUEBA REALES
--- Basados en el estado actual de la base de datos
--- =========================================================
 -- =========================================================
 -- CLIENTES
 -- =========================================================
@@ -16,29 +30,45 @@ INSERT INTO clientes (email, nombre, domicilio, nif, tipo_cliente) VALUES
 ('david.rodriguez@bugbusters.com', 'David Rodríguez Torres', 'Calle Larios 22, Málaga', '67890123F', 'estandar');
 
 -- =========================================================
--- ARTICULOS
+-- ARTÍCULOS
+-- Stock inicial antes de descontar los pedidos históricos
 -- =========================================================
-INSERT INTO articulos (codigo, descripcion, precio_venta, gastos_envio, tiempo_preparacion) VALUES
-('A001', 'Monitor Samsung 27" QHD', 249.99, 9.50, 10),
-('A002', 'Teclado Logitech K120 USB', 19.99, 4.99, 20),
-('A003', 'Ratón Logitech G502 Gaming', 59.99, 5.99, 10),
-('A004', 'Portátil Dell 15 5520', 799.99, 12.50, 30),
-('A005', 'Auriculares Sony WH-1000XM5', 349.99, 6.99, 10),
-('A006', 'Disco SSD Samsung 1TB', 109.99, 5.50, 20);
+INSERT INTO articulos (
+    codigo,
+    descripcion,
+    precio_venta,
+    gastos_envio,
+    tiempo_preparacion,
+    cantidad_disponible
+) VALUES
+('A001', 'Monitor Samsung 27" QHD', 249.99, 9.50, 10, 12),
+('A002', 'Teclado Logitech K120 USB', 19.99, 4.99, 20, 30),
+('A003', 'Ratón Logitech G502 Gaming', 59.99, 5.99, 10, 20),
+('A004', 'Portátil Dell 15 5520', 799.99, 12.50, 30, 8),
+('A005', 'Auriculares Sony WH-1000XM5', 349.99, 6.99, 10, 15),
+('A006', 'Disco SSD Samsung 1TB', 109.99, 5.50, 20, 25);
 
 -- =========================================================
 -- PEDIDOS
+-- Se insertan mediante procedimiento para que el stock
+-- se descuente automáticamente y quede coherente.
 -- =========================================================
-INSERT INTO pedidos (id_cliente, id_articulo, cantidad, fecha_hora, estado) VALUES
-(1, 1, 2, '2026-03-20 12:34:25', 'ENVIADO'),
-(2, 3, 1, '2026-03-21 09:15:10', 'ENVIADO'),
-(3, 2, 1, '2026-03-21 18:42:03', 'ENVIADO'),
-(1, 4, 1, '2026-03-22 11:05:47', 'ENVIADO'),
-(4, 5, 2, '2026-03-22 16:20:30', 'ENVIADO'),
-(2, 6, 1, '2026-03-23 10:10:10', 'ENVIADO');
+CALL insertar_pedido(1, 1, 2, '2026-03-20 12:34:25', 'ENVIADO', @pedido_1);
+CALL insertar_pedido(2, 3, 1, '2026-03-21 09:15:10', 'ENVIADO', @pedido_2);
+CALL insertar_pedido(3, 2, 1, '2026-03-21 18:42:03', 'ENVIADO', @pedido_3);
+CALL insertar_pedido(1, 4, 1, '2026-03-22 11:05:47', 'ENVIADO', @pedido_4);
+CALL insertar_pedido(4, 5, 2, '2026-03-22 16:20:30', 'ENVIADO', @pedido_5);
+CALL insertar_pedido(2, 6, 1, '2026-03-23 10:10:10', 'ENVIADO', @pedido_6);
 
 -- =========================================================
--- PARA LIMPIEZA TOTAL (Quitar '--' para ejecutar)
+-- COMPROBACIÓN OPCIONAL
+-- =========================================================
+-- SELECT * FROM clientes;
+-- SELECT * FROM articulos;
+-- SELECT * FROM pedidos;
+
+-- =========================================================
+-- LIMPIEZA TOTAL (quitar '--' para ejecutar)
 -- =========================================================
 -- SET FOREIGN_KEY_CHECKS = 0;
 -- TRUNCATE TABLE pedidos;

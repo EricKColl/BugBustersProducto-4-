@@ -6,6 +6,8 @@
 
 En esta fase del proyecto, el objetivo principal es dotar a la aplicación de una estructura de almacenamiento sólida, organizada y funcional, permitiendo trabajar con entidades como **clientes**, **artículos** y **pedidos**, así como establecer sus relaciones mediante un modelo relacional correctamente diseñado.
 
+Además de la persistencia básica, en la versión actual del proyecto también se ha incorporado la gestión de **stock de artículos**, de forma que ahora el sistema controla la cantidad disponible de cada producto, descuenta unidades al crear pedidos, devuelve stock al eliminar pedidos cancelables y permite añadir más unidades a artículos ya existentes.
+
 El proyecto incluye tanto la estructura del código Java como los scripts SQL necesarios para crear la base de datos, insertar datos de prueba y trabajar con procedimientos almacenados.
 
 ---
@@ -22,6 +24,7 @@ Los principales objetivos de este producto son:
 - Preparar procedimientos almacenados para inserción, actualización y eliminación.
 - Aplicar transacciones en las operaciones DML principales.
 - Permitir la gestión estructurada de clientes, artículos y pedidos.
+- Incorporar control de stock real sobre los artículos.
 - Mantener una organización clara del proyecto para facilitar su comprensión y mantenimiento.
 
 ---
@@ -45,7 +48,11 @@ El sistema está orientado a la gestión básica de una tienda online y contempl
 - Precio de venta.
 - Gastos de envío.
 - Tiempo de preparación.
-- Listado y eliminación de artículos.
+- Cantidad disponible en stock.
+- Listado de artículos mostrando también el stock actual.
+- Inserción de artículos nuevos con cantidad inicial disponible.
+- Posibilidad de añadir más stock a un artículo ya existente.
+- Eliminación de artículos.
 - Control para impedir eliminar artículos con pedidos asociados.
 
 ### Gestión de pedidos
@@ -57,6 +64,9 @@ El sistema está orientado a la gestión básica de una tienda online y contempl
 - Cambio manual de estado del pedido.
 - Cálculo automático del paso de **pendiente** a **enviado** según el tiempo de preparación del artículo.
 - Validación de cancelación de pedidos solo cuando aún son cancelables.
+- Descuento automático de stock al crear un pedido.
+- Devolución automática de stock al eliminar un pedido cancelable.
+- Restricción lógica para impedir cambiar un pedido de **ENVIADO** a **PENDIENTE**.
 
 ---
 
@@ -78,22 +88,20 @@ Este proyecto ha sido desarrollado utilizando las siguientes tecnologías:
 
 El proyecto está organizado en distintos paquetes para mantener una estructura clara, modular y fácil de mantener.
 
-```text
-src/
-├── Controlador/
-├── DAO/
-│   ├── Interfaces/
-│   └── MySQL/
-├── Database/
-│   ├── producto3.sql
-│   ├── procedimientos.sql
-│   └── datos_prueba.sql
-├── Excepciones/
-├── Factory/
-├── Modelo/
-├── Util/
-└── Vista/
-```
+    src/
+    ├── Controlador/
+    ├── DAO/
+    │   ├── Interfaces/
+    │   └── MySQL/
+    ├── Database/
+    │   ├── Tablas Base de Datos.sql
+    │   ├── Procedimientos almacenados.sql
+    │   └── Datos-Prueba.sql
+    ├── Excepciones/
+    ├── Factory/
+    ├── Modelo/
+    ├── Util/
+    └── Vista/
 
 ### Descripción de la estructura
 
@@ -164,6 +172,7 @@ Contiene la información de los artículos disponibles.
 - `precio_venta`
 - `gastos_envio`
 - `tiempo_preparacion`
+- `cantidad_disponible`
 
 ### Tabla `pedidos`
 
@@ -191,7 +200,7 @@ Esto permite mantener la consistencia de los datos y asegurar que no existan ped
 
 ## Scripts SQL incluidos
 
-### `producto3.sql`
+### `Tablas Base de Datos.sql`
 
 Archivo encargado de crear la estructura de la base de datos, incluyendo:
 
@@ -201,8 +210,9 @@ Archivo encargado de crear la estructura de la base de datos, incluyendo:
 - Claves foráneas.
 - Relaciones entre tablas.
 - Configuración de campos autoincrementales.
+- Inclusión del campo `cantidad_disponible` en la tabla de artículos.
 
-### `procedimientos.sql`
+### `Procedimientos almacenados.sql`
 
 Archivo que contiene los procedimientos almacenados del proyecto.
 
@@ -218,7 +228,6 @@ Incluye procedimientos para:
 
 - `actualizar_articulo`
 - `actualizar_cliente`
-- `actualizar_pedido`
 
 #### Eliminación
 
@@ -226,9 +235,15 @@ Incluye procedimientos para:
 - `eliminar_cliente`
 - `eliminar_pedido`
 
-### `datos_prueba.sql`
+#### Gestión adicional de stock
+
+- `sumar_stock_articulo`
+
+### `Datos-Prueba.sql`
 
 Archivo que contiene datos de prueba preparados para poblar la base de datos y facilitar las comprobaciones del sistema.
+
+En la versión actual, este script ya tiene en cuenta la inserción de artículos con stock inicial y la creación de pedidos mediante procedimiento almacenado para que el descuento de stock quede reflejado correctamente.
 
 ---
 
@@ -264,8 +279,8 @@ Antes de ejecutar el proyecto, es necesario añadir manualmente las librerías `
 6. Pulsar el botón **+**.
 7. Seleccionar **JARs or Directories**.
 8. Buscar y añadir los archivos:
-    - `mysql-connector-j-8.0.33.jar`
-    - `protobuf-java-3.21.9.jar`
+   - `mysql-connector-j-8.0.33.jar`
+   - `protobuf-java-3.21.9.jar`
 9. Asegurarse de que ambas dependencias queden con alcance **Compile**.
 10. Pulsar **Apply** y después **OK**.
 
@@ -277,9 +292,9 @@ Una vez añadidas, IntelliJ podrá compilar y ejecutar correctamente el proyecto
 
 Para dejar la base de datos lista, se recomienda seguir este orden de ejecución:
 
-1. Ejecutar la estructura de la base de datos: `producto3.sql`
-2. Ejecutar los procedimientos almacenados: `procedimientos.sql`
-3. Insertar los datos de prueba: `datos_prueba.sql`
+1. Ejecutar la estructura de la base de datos: `Tablas Base de Datos.sql`
+2. Ejecutar los procedimientos almacenados: `Procedimientos almacenados.sql`
+3. Insertar los datos de prueba: `Datos-Prueba.sql`
 
 Este orden permite dejar preparada una base de datos completamente funcional para realizar pruebas y validaciones.
 
@@ -293,15 +308,13 @@ La conexión a la base de datos se realiza mediante la clase:
 
 En este proyecto, la conexión está configurada actualmente con los siguientes datos:
 
-```java
-private static final String URL =
-        "jdbc:mysql://autorack.proxy.rlwy.net:13802/producto3" +
-        "?connectionTimeZone=LOCAL" +
-        "&forceConnectionTimeZoneToSession=true";
+    private static final String URL =
+            "jdbc:mysql://autorack.proxy.rlwy.net:13802/producto3" +
+            "?connectionTimeZone=LOCAL" +
+            "&forceConnectionTimeZoneToSession=true";
 
-private static final String USER = "root";
-private static final String PASSWORD = "SppuTCrhvoNHXhezDpJcwTINkOenYool";
-```
+    private static final String USER = "root";
+    private static final String PASSWORD = "SppuTCrhvoNHXhezDpJcwTINkOenYool";
 
 ### Explicación de la configuración
 
@@ -350,8 +363,10 @@ Permite:
 
 - Añadir artículos.
 - Mostrar artículos.
+- Añadir stock a artículos existentes.
 - Eliminar artículos.
 - Bloquear la eliminación si existen pedidos asociados.
+- Visualizar el stock disponible de cada artículo.
 
 ### Gestión de clientes
 
@@ -378,13 +393,18 @@ Permite:
 Además, el sistema:
 
 - Asigna fecha y hora al crear el pedido.
+- Recupera el número real del pedido generado en base de datos.
 - Calcula el estado del pedido según el tiempo de preparación.
 - Impide cancelar pedidos que ya no sean cancelables.
 - Sincroniza automáticamente el paso a estado **ENVIADO** cuando corresponde.
+- Impide cambiar manualmente un pedido de **ENVIADO** a **PENDIENTE**.
+- Impide indicar un cambio de estado si el pedido ya se encuentra en ese mismo estado.
+- Descuenta automáticamente el stock del artículo al crear el pedido.
+- Devuelve automáticamente el stock al eliminar un pedido cancelable.
 
 ---
 
-## Persistencia, JDBC, DAO y transacciones
+## Persistencia, JDBC, DAO, Factory y transacciones
 
 La persistencia del sistema se ha implementado utilizando **Java + JDBC** sobre **MySQL**, manteniendo el patrón de diseño **MVC** y separando la lógica de acceso a datos mediante **DAO** y **Factory**.
 
@@ -411,17 +431,46 @@ para evitar concatenaciones inseguras y reducir el riesgo de **SQL Injection**.
 
 ### Transacciones
 
-Las operaciones DML principales incluyen control transaccional mediante:
+Las operaciones principales que modifican datos se han diseñado con control transaccional, tanto desde Java como dentro de los procedimientos almacenados que gestionan operaciones críticas relacionadas con stock y pedidos.
 
-- `setAutoCommit(false)`
-- `commit()`
-- `rollback()`
+Esto permite mantener coherencia en situaciones como:
 
-Esto se ha aplicado especialmente en operaciones de inserción, actualización y eliminación de las capas DAO MySQL.
+- creación de pedidos
+- descuento de stock
+- eliminación de pedidos
+- devolución de stock
+- inserción de clientes y artículos
+- suma de stock sobre artículos existentes
 
 ### Procedimientos almacenados
 
-El proyecto incluye procedimientos almacenados de inserción, actualización y eliminación en la base de datos, integrados como parte de la solución de persistencia del producto.
+El proyecto incluye procedimientos almacenados integrados en la solución de persistencia. Los más importantes en la versión actual son:
+
+- Inserción de clientes
+- Actualización de clientes
+- Eliminación de clientes
+- Inserción de artículos con stock inicial
+- Actualización de artículos
+- Eliminación de artículos
+- Suma de stock sobre artículos existentes
+- Inserción de pedidos devolviendo el identificador generado
+- Eliminación de pedidos con devolución automática del stock
+
+---
+
+## Mejoras incorporadas en la versión actual
+
+Respecto a la versión inicial del producto, en esta versión se han incorporado varias mejoras funcionales importantes:
+
+- Control de stock real en artículos.
+- Inclusión de la columna `cantidad_disponible` en base de datos.
+- Descuento automático del stock al registrar pedidos.
+- Devolución del stock al eliminar pedidos cancelables.
+- Opción de sumar stock a artículos ya existentes.
+- Inserción de pedidos recuperando el `id` generado desde MySQL.
+- Corrección del registro de fecha y hora del pedido para respetar la fecha enviada desde Java.
+- Control lógico para impedir pasar un pedido enviado a pendiente.
+- Mejora de la presentación visual en consola para listados y tarjetas.
 
 ---
 
@@ -434,8 +483,9 @@ Este producto representa la fase del proyecto en la que se integra la persistenc
 - La organización por capas.
 - La preparación de procedimientos almacenados.
 - La creación de un entorno reproducible mediante datos de prueba.
-- La implementación de transacciones en operaciones DML relevantes.
+- La implementación del control de stock.
 - La gestión automática y manual del estado de los pedidos.
+- La mejora de la visualización en consola.
 
 ---
 
@@ -451,6 +501,8 @@ Durante el desarrollo se ha intentado seguir una estructura clara y ordenada, pr
 - Uso de procedimientos almacenados para mejorar la gestión SQL.
 - Control transaccional en operaciones críticas.
 - Validación funcional antes de realizar borrados sobre datos relacionados.
+- Restricciones de lógica de negocio para evitar cambios de estado incoherentes.
+- Comprobación de stock antes de aceptar pedidos.
 
 ---
 
@@ -470,6 +522,6 @@ Proyecto realizado por el equipo **BugBusters**.
 
 Este repositorio recoge el trabajo correspondiente al desarrollo del producto orientado a base de datos y persistencia, ofreciendo una base sólida para continuar con futuras fases del proyecto.
 
-La estructura planteada permite comprender con claridad cómo se organiza la aplicación, cómo se almacenan los datos y cómo se relacionan entre sí las distintas entidades del sistema.
+La estructura planteada permite comprender con claridad cómo se organiza la aplicación, cómo se almacenan los datos, cómo se relacionan entre sí las distintas entidades del sistema y cómo se controla ahora también el stock de los artículos.
 
 Se ha buscado una solución formal, ordenada y funcional, coherente con los requisitos del producto y adecuada para su evaluación académica.

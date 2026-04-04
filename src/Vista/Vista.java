@@ -66,7 +66,8 @@ public class Vista {
             TerminalUI.showMenu("GESTIÓN DE ARTÍCULOS", new String[]{
                     "1. Añadir artículo",
                     "2. Mostrar artículos",
-                    "3. Eliminar artículo",
+                    "3. Añadir stock a artículo existente",
+                    "4. Eliminar artículo",
                     "0. Volver"
             });
 
@@ -80,6 +81,9 @@ public class Vista {
                     mostrarArticulos();
                     break;
                 case 3:
+                    anadirStockArticulo();
+                    break;
+                case 4:
                     eliminarArticulo();
                     break;
                 case 0:
@@ -98,27 +102,43 @@ public class Vista {
             String codigo = leerTextoNoVacio("Código: ");
 
             try {
-                controlador.buscarArticulo(codigo);
-                TerminalUI.error("El artículo con código '" + codigo + "' ya existe.");
+                Articulo articuloExistente = controlador.buscarArticulo(codigo);
+
+                TerminalUI.warning("El artículo con código '" + codigo + "' ya existe.");
+                TerminalUI.showArticleCard(articuloExistente);
+
+                String respuesta = leerTextoNoVacio("¿Quieres añadir más stock a este artículo? (S/N): ");
+                if (respuesta.equalsIgnoreCase("S")) {
+                    int cantidadExtra = leerEntero("Cantidad a sumar al stock actual: ");
+                    controlador.sumarStockArticulo(codigo, cantidadExtra);
+
+                    Articulo articuloActualizado = controlador.buscarArticulo(codigo);
+                    TerminalUI.success("Stock añadido correctamente.");
+                    TerminalUI.info("Stock actual del artículo: " + articuloActualizado.getCantidadDisponible() + " unidades");
+                    TerminalUI.showArticleCard(articuloActualizado);
+                    TerminalUI.spotlight("STOCK ACTUALIZADO");
+                } else {
+                    TerminalUI.warning("Operación cancelada.");
+                }
                 return;
+
             } catch (RecursoNoEncontradoException e) {
-                //
+                // Correcto, seguimos para insertarlo nuevo
             }
 
             String descripcion = leerTextoNoVacio("Descripción: ");
             double precioVenta = leerDouble("Precio de venta: ");
             double gastosEnvio = leerDouble("Gastos de envío: ");
             int tiempoPreparacionMin = leerEntero("Tiempo de preparación (minutos): ");
+            int cantidadDisponible = leerEntero("Cantidad disponible inicial: ");
 
-            Articulo a = controlador.anadirArticulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
-
+            controlador.anadirArticulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin, cantidadDisponible);
             TerminalUI.success("¡Artículo añadido correctamente!");
-
-            TerminalUI.showArticleCard(a);
 
         } catch (DAOException e) {
             TerminalUI.exception(e.getMessage());
         }
+
         TerminalUI.sciFiDivider();
     }
 
@@ -129,6 +149,31 @@ public class Vista {
             TerminalUI.showArticlesTable(controlador.obtenerTodosArticulos());
         } catch (DAOException e) {
             TerminalUI.error("Error al conectar con la base de datos para obtener el listado: " + e.getMessage());
+        }
+    }
+
+    private void anadirStockArticulo() {
+        TerminalUI.sectionTitle("AÑADIR STOCK A ARTÍCULO EXISTENTE");
+
+        String codigo = leerTextoNoVacio("Código del artículo: ");
+
+        try {
+            Articulo articulo = controlador.buscarArticulo(codigo);
+
+            TerminalUI.info("Artículo localizado correctamente.");
+            TerminalUI.showArticleCard(articulo);
+
+            int cantidad = leerEntero("Cantidad a añadir al stock: ");
+            controlador.sumarStockArticulo(codigo, cantidad);
+
+            Articulo articuloActualizado = controlador.buscarArticulo(codigo);
+            TerminalUI.success("¡Stock actualizado correctamente!");
+            TerminalUI.info("Stock actual del artículo: " + articuloActualizado.getCantidadDisponible() + " unidades");
+            TerminalUI.showArticleCard(articuloActualizado);
+            TerminalUI.spotlight("STOCK ACTUALIZADO");
+
+        } catch (RecursoNoEncontradoException | DAOException e) {
+            TerminalUI.exception(e.getMessage());
         }
     }
 
@@ -220,7 +265,7 @@ public class Vista {
             controlador.anadirCliente(email, nombre, domicilio, nif, tipoCliente);
             TerminalUI.success("¡Cliente añadido correctamente!");
 
-        } catch (DAOException | EmailInvalidoException e) {
+        } catch (DAOException | EmailInvalidoException | TipoClienteInvalidoException e) {
             TerminalUI.exception(e.getMessage());
         }
 
@@ -279,7 +324,6 @@ public class Vista {
         String email = leerTextoNoVacio("Introduce el Email del cliente a eliminar: ");
 
         try {
-            // 1. Buscamos el objeto
             Cliente aEliminar = controlador.buscarCliente(email);
 
             TerminalUI.info("Cliente localizado correctamente.");
@@ -288,7 +332,6 @@ public class Vista {
             String conf = leerTextoNoVacio("¿Estás seguro de eliminar a este cliente? (S/N): ");
             if (!conf.equalsIgnoreCase("S")) return;
 
-            // 2. Pasamos el OBJETO al controlador, no el email
             controlador.eliminarCliente(aEliminar);
 
             TerminalUI.success("¡Cliente eliminado con éxito!");
@@ -307,7 +350,7 @@ public class Vista {
                     "2. Eliminar pedido",
                     "3. Mostrar pedidos pendientes",
                     "4. Mostrar pedidos enviados",
-                    "5. Cambiar estado de pedido a ENVIADO",
+                    "5. Cambiar estado de pedido",
                     "0. Volver"
             });
 
@@ -327,7 +370,7 @@ public class Vista {
                     mostrarPedidosEnviados();
                     break;
                 case 5:
-                    marcarPedidoComoEnviado();
+                    cambiarEstadoPedido();
                     break;
                 case 0:
                     break;
@@ -352,7 +395,6 @@ public class Vista {
         Cliente cliente = null;
 
         try {
-            // Buscamos al cliente
             cliente = controlador.buscarCliente(emailCliente);
             TerminalUI.info("Cliente encontrado.");
             TerminalUI.showClientCard(cliente);
@@ -373,12 +415,11 @@ public class Vista {
                 int tipoSeleccionado = leerEntero("Tipo cliente (1-Estándar, 2-Premium): ");
 
                 try {
-                    // Pasamos el int directamente al controlador
                     cliente = controlador.anadirCliente(emailCliente, nombre, domicilio, nif, tipoSeleccionado);
                     TerminalUI.success("¡Cliente creado correctamente!");
                     TerminalUI.showClientsTable(List.of(cliente));
 
-                } catch (DAOException ex) {
+                } catch (TipoClienteInvalidoException | DAOException | EmailInvalidoException ex) {
                     TerminalUI.exception(ex.getMessage());
                     return;
                 }
@@ -388,24 +429,34 @@ public class Vista {
             }
         }
 
-        // --- CONTINUACIÓN DEL PEDIDO (DATOS DEL ARTÍCULO) ---
+        TerminalUI.info("Procedemos a la creación del pedido.");
+        String codigoArticulo = leerTextoNoVacio("Código del artículo: ");
+
+        Articulo articulo = null;
         try {
-            String codigoArticulo = leerTextoNoVacio("Código del artículo: ");
-
-            Articulo articulo = controlador.buscarArticulo(codigoArticulo);
-            TerminalUI.info("Articulo encontrado: " + articulo.getDescripcion());
-
-            int cantidad = leerEntero("Cantidad: ");
-
-            Pedido nuevoPedido = controlador.anadirPedido(emailCliente, codigoArticulo, cantidad);
-            TerminalUI.success("¡Pedido añadido correctamente!");
-            TerminalUI.showOrderCard(nuevoPedido);
-
-        } catch (RecursoNoEncontradoException | DAOException | EmailInvalidoException e) {
+            articulo = controlador.buscarArticulo(codigoArticulo);
+            TerminalUI.showArticleCard(articulo);
+        } catch (RecursoNoEncontradoException | DAOException e) {
             TerminalUI.exception(e.getMessage());
+            return;
         }
 
-        TerminalUI.sciFiDivider();
+        int cantidad = leerEntero("Cantidad: ");
+        int tiempoTotal = articulo.getTiempoPreparacionMin() * cantidad;
+
+        try {
+            Pedido pedido = controlador.anadirPedido(emailCliente, codigoArticulo, cantidad);
+            Articulo articuloActualizado = controlador.buscarArticulo(codigoArticulo);
+
+            TerminalUI.success("Pedido creado correctamente para " + cliente.getNombre() + ".");
+            TerminalUI.info("Tiempo estimado: " + tiempoTotal + " minutos");
+            TerminalUI.info("Stock restante del artículo: " + articuloActualizado.getCantidadDisponible() + " unidades");
+            TerminalUI.showOrderCard(pedido);
+            TerminalUI.spotlight("OPERACIÓN COMPLETADA CON ÉXITO");
+
+        } catch (EmailInvalidoException | RecursoNoEncontradoException | DAOException e) {
+            TerminalUI.exception(e.getMessage());
+        }
     }
 
     private void eliminarPedido() {
@@ -456,22 +507,33 @@ public class Vista {
         }
     }
 
-    private void marcarPedidoComoEnviado() {
-        TerminalUI.sectionTitle("MARCAR PEDIDO COMO ENVIADO");
+    private void cambiarEstadoPedido() {
+        TerminalUI.sectionTitle("CAMBIAR ESTADO DE PEDIDO");
 
-        int numeroPedido = leerEntero("Introduce el número de pedido: ");
+        int numeroPedido = leerEntero("Número de pedido: ");
+        int opcionEstado = leerEntero("Nuevo estado (1-PENDIENTE, 2-ENVIADO): ");
+
+        String nuevoEstado;
+        switch (opcionEstado) {
+            case 1:
+                nuevoEstado = "PENDIENTE";
+                break;
+            case 2:
+                nuevoEstado = "ENVIADO";
+                break;
+            default:
+                TerminalUI.error("Opción de estado no válida.");
+                return;
+        }
 
         try {
-            controlador.marcarComoEnviado(numeroPedido);
+            controlador.cambiarEstadoPedido(numeroPedido, nuevoEstado);
+            TerminalUI.success("Estado del pedido actualizado correctamente a " + nuevoEstado + ".");
+            TerminalUI.spotlight("ESTADO DEL PEDIDO ACTUALIZADO");
 
-            TerminalUI.success("¡Estado actualizado!");
-            TerminalUI.info("El pedido #" + numeroPedido + " se ha marcado como ENVIADO.");
-            TerminalUI.spotlight("OPERACIÓN COMPLETADA");
-
-        } catch (RecursoNoEncontradoException | DAOException e) {
+        } catch (RecursoNoEncontradoException | DAOException | CambioEstadoPedidoNoPermitidoException e) {
             TerminalUI.exception(e.getMessage());
         }
-        TerminalUI.sciFiDivider();
     }
 
     private String leerTextoNoVacio(String mensaje) {
