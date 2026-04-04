@@ -22,7 +22,7 @@ public class ArticuloDAOMySQL implements ArticuloDAO {
 
     @Override
     public void insertar(Articulo articulo) throws DAOException {
-        String sql = "{CALL insertar_articulo(?, ?, ?, ?, ?)}";
+        String sql = "{CALL insertar_articulo(?, ?, ?, ?, ?, ?)}";
 
         try (CallableStatement cs = conexion.prepareCall(sql)) {
             cs.setString(1, articulo.getCodigo());
@@ -30,35 +30,37 @@ public class ArticuloDAOMySQL implements ArticuloDAO {
             cs.setDouble(3, articulo.getPrecioVenta());
             cs.setDouble(4, articulo.getGastosEnvio());
             cs.setInt(5, articulo.getTiempoPreparacionMin());
-
+            cs.setInt(6, articulo.getCantidadDisponible());
             cs.execute();
-            // MySQL ya hizo el COMMIT internamente
+
         } catch (SQLException e) {
-            throw new DAOException("Error al insertar artículo mediante procedimiento: " + e.getMessage(), e);
+            throw new DAOException("Error al insertar artículo mediante procedimiento almacenado: " + e.getMessage(), e);
         }
     }
 
     @Override
     public List<Articulo> obtenerTodos() throws DAOException {
         List<Articulo> listaArticulos = new ArrayList<>();
-        String sql = "SELECT codigo, descripcion, precio_venta, gastos_envio, tiempo_preparacion FROM articulos";
+        String sql = "SELECT codigo, descripcion, precio_venta, gastos_envio, tiempo_preparacion, cantidad_disponible FROM articulos";
 
-        try (PreparedStatement stat = conexion.prepareStatement(sql);
-             ResultSet rs = stat.executeQuery()) {
+        try (PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                String codigo = rs.getString("codigo");
-                String descripcion = rs.getString("descripcion");
-                double precioVenta = rs.getDouble("precio_venta");
-                double gastosEnvio = rs.getDouble("gastos_envio");
-                int tiempoPreparacionMin = rs.getInt("tiempo_preparacion");
+                Articulo articulo = new Articulo(
+                        rs.getString("codigo"),
+                        rs.getString("descripcion"),
+                        rs.getDouble("precio_venta"),
+                        rs.getDouble("gastos_envio"),
+                        rs.getInt("tiempo_preparacion"),
+                        rs.getInt("cantidad_disponible")
+                );
 
-                Articulo articulo = new Articulo(codigo, descripcion, precioVenta, gastosEnvio, tiempoPreparacionMin);
                 listaArticulos.add(articulo);
             }
 
         } catch (SQLException e) {
-            throw new DAOException("Error de SQL al intentar obtener la lista de artículos.", e);
+            throw new DAOException("Error de SQL al obtener la lista de artículos: " + e.getMessage(), e);
         }
 
         return listaArticulos;
@@ -67,42 +69,65 @@ public class ArticuloDAOMySQL implements ArticuloDAO {
     @Override
     public Articulo obtenerPorId(String codigo) throws DAOException {
         Articulo articuloEncontrado = null;
-        String sql = "SELECT * FROM articulos WHERE codigo = ?";
+        String sql = "SELECT codigo, descripcion, precio_venta, gastos_envio, tiempo_preparacion, cantidad_disponible " +
+                "FROM articulos WHERE codigo = ?";
 
-        try (PreparedStatement stat = conexion.prepareStatement(sql)) {
-            stat.setString(1, codigo);
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, codigo);
 
-            try (ResultSet rs = stat.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     articuloEncontrado = new Articulo(
                             rs.getString("codigo"),
                             rs.getString("descripcion"),
                             rs.getDouble("precio_venta"),
                             rs.getDouble("gastos_envio"),
-                            rs.getInt("tiempo_preparacion")
+                            rs.getInt("tiempo_preparacion"),
+                            rs.getInt("cantidad_disponible")
                     );
                 }
             }
 
         } catch (SQLException e) {
-            throw new DAOException("Error de SQL al buscar el artículo con código: " + codigo, e);
+            throw new DAOException("Error de SQL al buscar el artículo con código '" + codigo + "': " + e.getMessage(), e);
         }
 
         return articuloEncontrado;
     }
 
+    @Override
+    public void sumarStock(String codigo, int cantidad) throws DAOException {
+        String sql = "{CALL sumar_stock_articulo(?, ?)}";
+
+        try (CallableStatement cs = conexion.prepareCall(sql)) {
+            cs.setString(1, codigo);
+            cs.setInt(2, cantidad);
+            cs.execute();
+
+        } catch (SQLException e) {
+            throw new DAOException("Error al sumar stock del artículo: " + e.getMessage(), e);
+        }
+    }
+
     private boolean tienePedidosAsociados(String codigoArticulo) {
-        String sql = "SELECT COUNT(*) FROM pedidos p JOIN articulos a ON p.id_articulo = a.id_articulo WHERE a.codigo = ?";
+        String sql = "SELECT COUNT(*) " +
+                "FROM pedidos p " +
+                "JOIN articulos a ON p.id_articulo = a.id_articulo " +
+                "WHERE a.codigo = ?";
+
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setString(1, codigoArticulo);
+
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return rs.getInt(1) > 0;
                 }
             }
+
         } catch (SQLException e) {
             return true;
         }
+
         return false;
     }
 
@@ -117,22 +142,25 @@ public class ArticuloDAOMySQL implements ArticuloDAO {
 
         try (PreparedStatement psBusqueda = conexion.prepareStatement(sqlBusqueda)) {
             psBusqueda.setString(1, codigo);
+
             try (ResultSet rs = psBusqueda.executeQuery()) {
                 if (rs.next()) {
                     idArticulo = rs.getInt("id_articulo");
                 } else {
-                    throw new DAOException("El artículo con código " + codigo + " no existe.");
+                    throw new DAOException("El artículo con código '" + codigo + "' no existe.");
                 }
             }
+
         } catch (SQLException e) {
             throw new DAOException("Error al buscar el ID del artículo: " + e.getMessage(), e);
         }
 
         String sqlProc = "{CALL eliminar_articulo(?)}";
+
         try (CallableStatement cs = conexion.prepareCall(sqlProc)) {
             cs.setInt(1, idArticulo);
             cs.execute();
-            // El COMMIT ya lo hace el procedimiento en MySQL
+
         } catch (SQLException e) {
             throw new DAOException("Error al ejecutar eliminar_articulo: " + e.getMessage(), e);
         }

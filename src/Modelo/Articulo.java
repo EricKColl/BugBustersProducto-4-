@@ -4,7 +4,7 @@ package Modelo;
  * Clase que representa un artículo de la tienda.
  *
  * Contiene la información básica necesaria para gestionar la venta y el envío de un artículo,
- * incluyendo su precio, gastos de envío y tiempo de preparación.
+ * incluyendo su precio, gastos de envío, tiempo de preparación y cantidad disponible.
  *
  * @author BugBusters
  * @version 1.0
@@ -17,6 +17,7 @@ public class Articulo {
     private double precioVenta;
     private double gastosEnvio;
     private int tiempoPreparacionMin; // minutos
+    private int cantidadDisponible;
 
     public Articulo(String codigo, String descripcion, double precioVenta, double gastosEnvio, int tiempoPreparacionMin) {
         this.codigo = codigo;
@@ -24,6 +25,17 @@ public class Articulo {
         this.precioVenta = precioVenta;
         this.gastosEnvio = gastosEnvio;
         this.tiempoPreparacionMin = tiempoPreparacionMin;
+        this.cantidadDisponible = 0;
+    }
+
+    public Articulo(String codigo, String descripcion, double precioVenta, double gastosEnvio,
+                    int tiempoPreparacionMin, int cantidadDisponible) {
+        this.codigo = codigo;
+        this.descripcion = descripcion;
+        this.precioVenta = precioVenta;
+        this.gastosEnvio = gastosEnvio;
+        this.tiempoPreparacionMin = tiempoPreparacionMin;
+        this.cantidadDisponible = cantidadDisponible;
     }
 
     public String getCodigo() {
@@ -66,6 +78,14 @@ public class Articulo {
         this.tiempoPreparacionMin = tiempoPreparacionMin;
     }
 
+    public int getCantidadDisponible() {
+        return cantidadDisponible;
+    }
+
+    public void setCantidadDisponible(int cantidadDisponible) {
+        this.cantidadDisponible = cantidadDisponible;
+    }
+
     @Override
     public String toString() {
         return "Artículo: " +
@@ -73,6 +93,7 @@ public class Articulo {
                 " | Descripción: " + descripcion +
                 " | Precio: " + String.format("%.2f €", precioVenta) +
                 " | Gastos envío: " + String.format("%.2f €", gastosEnvio) +
-                " | Tiempo preparación: " + tiempoPreparacionMin + " min";
+                " | Tiempo preparación: " + tiempoPreparacionMin + " min" +
+                " | Stock: " + cantidadDisponible;
     }
 }

@@ -27,20 +27,23 @@ public class PedidoDAOMySQL implements PedidoDAO {
         String sql = "{CALL insertar_pedido(?, ?, ?, ?, ?, ?)}";
 
         try (CallableStatement cs = conexion.prepareCall(sql)) {
-            cs.setInt(1, pedido.getCliente().getIdCliente());
-            cs.setInt(2, obtenerIdArticuloPorCodigo(pedido.getArticulo().getCodigo()));
-            cs.setInt(3, pedido.getCantidad());
-            cs.setTimestamp(4, java.sql.Timestamp.valueOf(pedido.getFechaHora()));
+            int idCliente = pedido.getCliente().getIdCliente();
+            int idArticulo = obtenerIdArticuloPorCodigo(pedido.getArticulo().getCodigo());
 
+            cs.setInt(1, idCliente);
+            cs.setInt(2, idArticulo);
+            cs.setInt(3, pedido.getCantidad());
+            cs.setTimestamp(4, Timestamp.valueOf(pedido.getFechaHora()));
             cs.setString(5, pedido.getEstado());
-            cs.registerOutParameter(6, java.sql.Types.INTEGER);
+            cs.registerOutParameter(6, Types.INTEGER);
 
             cs.execute();
 
-            pedido.setIdPedido(cs.getInt(6));
+            int idGenerado = cs.getInt(6);
+            pedido.setIdPedido(idGenerado);
 
         } catch (SQLException e) {
-            throw new DAOException("Error en la inserción: " + e.getMessage(), e);
+            throw new DAOException("Error al insertar pedido mediante procedimiento: " + e.getMessage(), e);
         }
     }
 
@@ -205,19 +208,67 @@ public class PedidoDAOMySQL implements PedidoDAO {
         return null;
     }
 
+    public void actualizar(Pedido pedido) throws DAOException {
+        String sql = "UPDATE pedidos SET id_cliente = ?, id_articulo = ?, cantidad = ?, fecha_hora = ?, estado = ? WHERE id_pedido = ?";
+
+        boolean autoCommitAnterior;
+        try {
+            autoCommitAnterior = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
+
+            try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+                int idCliente = pedido.getCliente().getIdCliente();
+                int idArticulo = obtenerIdArticuloPorCodigo(pedido.getArticulo().getCodigo());
+
+                ps.setInt(1, idCliente);
+                ps.setInt(2, idArticulo);
+                ps.setInt(3, pedido.getCantidad());
+                ps.setTimestamp(4, Timestamp.valueOf(pedido.getFechaHora()));
+                ps.setString(5, pedido.getEstado());
+                ps.setInt(6, pedido.getNumeroPedido());
+
+                ps.executeUpdate();
+                conexion.commit();
+
+            } catch (SQLException e) {
+                conexion.rollback();
+                throw new DAOException("Error al actualizar el pedido en MySQL", e);
+            } catch (DAOException e) {
+                conexion.rollback();
+                throw e;
+            } finally {
+                conexion.setAutoCommit(autoCommitAnterior);
+            }
+
+        } catch (SQLException e) {
+            throw new DAOException("Error al gestionar la transacción al actualizar pedido", e);
+        }
+    }
+
     @Override
     public void actualizarEstado(int idPedido, String nuevoEstado) throws DAOException {
         String sql = "UPDATE pedidos SET estado = ? WHERE id_pedido = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, nuevoEstado);
-            ps.setInt(2, idPedido);
-            ps.executeUpdate();
 
-            if (!conexion.getAutoCommit()) {
+        boolean autoCommitAnterior;
+        try {
+            autoCommitAnterior = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
+
+            try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+                ps.setString(1, nuevoEstado);
+                ps.setInt(2, idPedido);
+                ps.executeUpdate();
                 conexion.commit();
+
+            } catch (SQLException e) {
+                conexion.rollback();
+                throw new DAOException("Error al actualizar el estado del pedido en MySQL", e);
+            } finally {
+                conexion.setAutoCommit(autoCommitAnterior);
             }
+
         } catch (SQLException e) {
-            throw new DAOException("Error al actualizar el estado del pedido.", e);
+            throw new DAOException("Error al gestionar la transacción al actualizar el estado del pedido", e);
         }
     }
 }
