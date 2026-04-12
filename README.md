@@ -105,7 +105,7 @@ hay que aceptarla para que el entorno se configure correctamente.
 En IntelliJ:
 
 - Ve a **File > Project Structure > Project**
-- Comprueba que el **Project SDK** sea **Java 17**
+- Comprueba que el **Project SDK** sea **Java 17/25**
 
 ### 5. Esperar a que Maven descargue dependencias
 
