@@ -5,74 +5,93 @@ import DAO.MySQL.ArticuloDAOMySQL;
 import Excepciones.DAOException;
 import DAO.Interfaces.PedidoDAO;
 import DAO.MySQL.PedidoDAOMySQL;
-import Util.ConexionBD;
 import DAO.Interfaces.ClienteDAO;
 import DAO.MySQL.ClienteDAOMySQL;
-import java.sql.Connection;
-import java.sql.SQLException;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
 
 public class MySQLDAOFactory extends DAOFactory {
+
+    // El factory de JPA que leerá el persistence.xml
+    private static EntityManagerFactory emf;
+    private EntityManager em;
+
+    public MySQLDAOFactory() {
+        if (emf == null) {
+            // Inicia JPA usando el nombre del persistence-unit
+            emf = Persistence.createEntityManagerFactory("Producto4PU");
+        }
+    }
+
+    @Override
+    public EntityManager getEntityManager() throws DAOException {
+        // Si no hay un EntityManager o se cerró, creamos uno nuevo
+        if (em == null || !em.isOpen()) {
+            em = emf.createEntityManager();
+        }
+        return em;
+    }
 
     @Override
     public ArticuloDAO getArticuloDAO() throws DAOException {
         // Pedimos la instancia única de ConexionBD
-        ConexionBD con = ConexionBD.getInstancia();
+        EntityManager emActual = getEntityManager();
 
         //Nos aseguramos que esté la base de datos conectada.
-        con.conectar();
+        // (JPA gestiona la conexión automáticamente bajo demanda)
 
         // Construimos el DAO de MySQL y le inyectamos la conexión abierta
-        return new ArticuloDAOMySQL(con.getConexion());
+        return new ArticuloDAOMySQL(emActual);
     }
 
     @Override
     public PedidoDAO getPedidoDAO() throws DAOException{
-        ConexionBD con = ConexionBD.getInstancia();
-        con.conectar();
-        return new PedidoDAOMySQL(con.getConexion());
+        // Pedimos la instancia única de ConexionBD (Ahora EntityManager)
+        EntityManager emActual = getEntityManager();
+
+        //Nos aseguramos que esté la base de datos conectada.
+
+        return new PedidoDAOMySQL(emActual);
     }
 
     @Override
     public ClienteDAO getClienteDAO() throws DAOException {
-        ConexionBD con = ConexionBD.getInstancia();
-        con.conectar();
-        return new ClienteDAOMySQL(con.getConexion());
-    }
+        // Pedimos la instancia única de ConexionBD (Ahora EntityManager)
+        EntityManager emActual = getEntityManager();
 
-    @Override
-    public Connection getConnection() throws DAOException {
-        return ConexionBD.getInstancia().getConexion();
+        //Nos aseguramos que esté la base de datos conectada.
+
+        return new ClienteDAOMySQL(emActual);
     }
 
     @Override
     public void iniciarTransaccion() throws DAOException {
         try {
-            ConexionBD.getInstancia().getConexion().setAutoCommit(false);
-        } catch (SQLException e) {
-            throw new DAOException("Error al iniciar transacción SQL", e);
+            getEntityManager().getTransaction().begin();
+        } catch (Exception e) {
+            throw new DAOException("Error al iniciar transacción JPA", e);
         }
     }
 
     @Override
     public void confirmarTransaccion() throws DAOException {
         try {
-            Connection con = ConexionBD.getInstancia().getConexion();
-            con.commit();
-            con.setAutoCommit(true);
-        } catch (SQLException e) {
-            throw new DAOException("Error al confirmar transacción SQL", e);
+            getEntityManager().getTransaction().commit();
+        } catch (Exception e) {
+            throw new DAOException("Error al confirmar transacción JPA", e);
         }
     }
 
     @Override
     public void cancelarTransaccion() throws DAOException {
         try {
-            Connection con = ConexionBD.getInstancia().getConexion();
-            con.rollback();
-            con.setAutoCommit(true);
-        } catch (SQLException e) {
-            throw new DAOException("Error al cancelar transacción SQL", e);
+            if (getEntityManager().getTransaction().isActive()) {
+                getEntityManager().getTransaction().rollback();
+            }
+        } catch (Exception e) {
+            throw new DAOException("Error al cancelar transacción JPA", e);
         }
     }
-
 }

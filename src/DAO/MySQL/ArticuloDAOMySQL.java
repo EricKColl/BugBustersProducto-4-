@@ -4,131 +4,76 @@ import DAO.Interfaces.ArticuloDAO;
 import Excepciones.DAOException;
 import Modelo.Articulo;
 
-import java.sql.CallableStatement;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
 
 public class ArticuloDAOMySQL implements ArticuloDAO {
 
-    private final Connection conexion;
+    // Sustituimos Connection por EntityManager
+    private final EntityManager em;
 
-    public ArticuloDAOMySQL(Connection conexion) {
-        this.conexion = conexion;
+    public ArticuloDAOMySQL(EntityManager em) {
+        this.em = em;
     }
 
     @Override
     public void insertar(Articulo articulo) throws DAOException {
-        String sql = "{CALL insertar_articulo(?, ?, ?, ?, ?, ?)}";
-
-        try (CallableStatement cs = conexion.prepareCall(sql)) {
-            cs.setString(1, articulo.getCodigo());
-            cs.setString(2, articulo.getDescripcion());
-            cs.setDouble(3, articulo.getPrecioVenta());
-            cs.setDouble(4, articulo.getGastosEnvio());
-            cs.setInt(5, articulo.getTiempoPreparacionMin());
-            cs.setInt(6, articulo.getCantidadDisponible());
-            cs.execute();
-
-        } catch (SQLException e) {
-            throw new DAOException("Error al insertar artículo mediante procedimiento almacenado: " + e.getMessage(), e);
+        // Adiós al CallableStatement y al procedimiento almacenado
+        try {
+            em.persist(articulo);
+        } catch (Exception e) {
+            throw new DAOException("Error al insertar artículo: " + e.getMessage(), e);
         }
     }
 
     @Override
     public List<Articulo> obtenerTodos() throws DAOException {
-        List<Articulo> listaArticulos = new ArrayList<>();
-        String sql = "SELECT codigo, descripcion, precio_venta, gastos_envio, tiempo_preparacion, cantidad_disponible FROM articulos";
-
-        try (PreparedStatement ps = conexion.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                Articulo articulo = new Articulo(
-                        rs.getString("codigo"),
-                        rs.getString("descripcion"),
-                        rs.getDouble("precio_venta"),
-                        rs.getDouble("gastos_envio"),
-                        rs.getInt("tiempo_preparacion"),
-                        rs.getInt("cantidad_disponible")
-                );
-
-                listaArticulos.add(articulo);
-            }
-
-        } catch (SQLException e) {
-            throw new DAOException("Error de SQL al obtener la lista de artículos: " + e.getMessage(), e);
+        // Usamos JPQL para consultar a la Entidad Articulo, no a la tabla
+        try {
+            String jpql = "SELECT a FROM Articulo a";
+            TypedQuery<Articulo> query = em.createQuery(jpql, Articulo.class);
+            return query.getResultList();
+        } catch (Exception e) {
+            throw new DAOException("Error de JPA al obtener la lista de artículos: " + e.getMessage(), e);
         }
-
-        return listaArticulos;
     }
 
     @Override
     public Articulo obtenerPorId(String codigo) throws DAOException {
-        Articulo articuloEncontrado = null;
-        String sql = "SELECT codigo, descripcion, precio_venta, gastos_envio, tiempo_preparacion, cantidad_disponible " +
-                "FROM articulos WHERE codigo = ?";
-
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, codigo);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    articuloEncontrado = new Articulo(
-                            rs.getString("codigo"),
-                            rs.getString("descripcion"),
-                            rs.getDouble("precio_venta"),
-                            rs.getDouble("gastos_envio"),
-                            rs.getInt("tiempo_preparacion"),
-                            rs.getInt("cantidad_disponible")
-                    );
-                }
-            }
-
-        } catch (SQLException e) {
-            throw new DAOException("Error de SQL al buscar el artículo con código '" + codigo + "': " + e.getMessage(), e);
+        // JPA busca automáticamente por la clave primaria (@Id)
+        try {
+            return em.find(Articulo.class, codigo);
+        } catch (Exception e) {
+            throw new DAOException("Error de JPA al buscar el artículo con código '" + codigo + "': " + e.getMessage(), e);
         }
-
-        return articuloEncontrado;
     }
 
     @Override
     public void sumarStock(String codigo, int cantidad) throws DAOException {
-        String sql = "{CALL sumar_stock_articulo(?, ?)}";
-
-        try (CallableStatement cs = conexion.prepareCall(sql)) {
-            cs.setString(1, codigo);
-            cs.setInt(2, cantidad);
-            cs.execute();
-
-        } catch (SQLException e) {
+        // En JPA simplemente obtenemos el objeto, modificamos su estado y lo actualizamos (merge)
+        try {
+            Articulo articulo = em.find(Articulo.class, codigo);
+            if (articulo != null) {
+                articulo.setCantidadDisponible(articulo.getCantidadDisponible() + cantidad);
+                em.merge(articulo);
+            }
+        } catch (Exception e) {
             throw new DAOException("Error al sumar stock del artículo: " + e.getMessage(), e);
         }
     }
 
     private boolean tienePedidosAsociados(String codigoArticulo) {
-        String sql = "SELECT COUNT(*) " +
-                "FROM pedidos p " +
-                "JOIN articulos a ON p.id_articulo = a.id_articulo " +
-                "WHERE a.codigo = ?";
+        String jpql = "SELECT COUNT(p) FROM Pedido p WHERE p.articulo.codigo = :codigo";
 
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, codigoArticulo);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
-                }
-            }
-
-        } catch (SQLException e) {
+        try {
+            Long count = em.createQuery(jpql, Long.class)
+                    .setParameter("codigo", codigoArticulo)
+                    .getSingleResult();
+            return count > 0;
+        } catch (Exception e) {
             return true;
         }
-
-        return false;
     }
 
     @Override
@@ -137,32 +82,16 @@ public class ArticuloDAOMySQL implements ArticuloDAO {
             throw new DAOException("No se puede eliminar el artículo porque tiene pedidos asociados.");
         }
 
-        int idArticulo = -1;
-        String sqlBusqueda = "SELECT id_articulo FROM articulos WHERE codigo = ?";
-
-        try (PreparedStatement psBusqueda = conexion.prepareStatement(sqlBusqueda)) {
-            psBusqueda.setString(1, codigo);
-
-            try (ResultSet rs = psBusqueda.executeQuery()) {
-                if (rs.next()) {
-                    idArticulo = rs.getInt("id_articulo");
-                } else {
-                    throw new DAOException("El artículo con código '" + codigo + "' no existe.");
-                }
+        // Buscamos la entidad y si existe, la eliminamos del contexto
+        try {
+            Articulo articulo = em.find(Articulo.class, codigo);
+            if (articulo == null) {
+                throw new DAOException("El artículo con código '" + codigo + "' no existe.");
             }
 
-        } catch (SQLException e) {
-            throw new DAOException("Error al buscar el ID del artículo: " + e.getMessage(), e);
-        }
-
-        String sqlProc = "{CALL eliminar_articulo(?)}";
-
-        try (CallableStatement cs = conexion.prepareCall(sqlProc)) {
-            cs.setInt(1, idArticulo);
-            cs.execute();
-
-        } catch (SQLException e) {
-            throw new DAOException("Error al ejecutar eliminar_articulo: " + e.getMessage(), e);
+            em.remove(articulo);
+        } catch (Exception e) {
+            throw new DAOException("Error al ejecutar eliminar artículo: " + e.getMessage(), e);
         }
     }
 }
