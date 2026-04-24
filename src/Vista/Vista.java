@@ -422,7 +422,7 @@ public class Vista {
         }
 
         try {
-            TerminalUI.info("--- DATOS DEL PEDIDO ---");
+            TerminalUI.info("Datos del pedido:");
             String codigoArticulo = leerTextoNoVacio("Código del artículo: ");
 
             if (!controlador.existeArticulo(codigoArticulo)) {
