@@ -12,7 +12,6 @@ import Modelo.Pedido;
 import Excepciones.DAOException;
 import Modelo.Excepciones.*;
 
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -25,6 +24,7 @@ public class Controlador {
 
     public Controlador() {
         try {
+            // Aquí en el futuro podríamos cambiar DAOFactory.MYSQL por DAOFactory.JPA o similar
             this.factory = DAOFactory.getDAOFactory(DAOFactory.MYSQL);
             this.clienteDAO = factory.getClienteDAO();
             this.articuloDAO = factory.getArticuloDAO();
@@ -40,7 +40,8 @@ public class Controlador {
         emailValido(email);
 
         if (cantidad <= 0) {
-            throw new DAOException("La cantidad del pedido debe ser mayor que 0.", new SQLException());
+            // Eliminado new SQLException()
+            throw new DAOException("La cantidad del pedido debe ser mayor que 0.");
         }
 
         Cliente cliente = clienteDAO.buscarPorEmail(email);
@@ -54,9 +55,9 @@ public class Controlador {
         }
 
         if (articulo.getCantidadDisponible() < cantidad) {
+            // Eliminado new SQLException()
             throw new DAOException(
-                    "Stock insuficiente. Disponible: " + articulo.getCantidadDisponible() + " unidades.",
-                    new SQLException()
+                    "Stock insuficiente. Disponible: " + articulo.getCantidadDisponible() + " unidades."
             );
         }
 
@@ -131,7 +132,8 @@ public class Controlador {
             idFiltro = c.getIdCliente();
 
             if (idFiltro <= 0) {
-                throw new DAOException("Error de integridad: El ID del cliente no es válido.", new SQLException());
+                // Eliminado new SQLException()
+                throw new DAOException("Error de integridad: El ID del cliente no es válido.");
             }
         }
 
@@ -162,7 +164,14 @@ public class Controlador {
             throw new CambioEstadoPedidoNoPermitidoException(idPedido, estadoActual, estadoNuevo);
         }
 
-        pedidoDAO.actualizarEstado(idPedido, estadoNuevo);
+        try {
+            factory.iniciarTransaccion();
+            pedidoDAO.actualizarEstado(idPedido, estadoNuevo);
+            factory.confirmarTransaccion();
+        } catch (DAOException e) {
+            factory.cancelarTransaccion();
+            throw e;
+        }
     }
 
     public void sincronizarEstadosAutomaticos() throws DAOException {
@@ -174,7 +183,6 @@ public class Controlador {
             factory.iniciarTransaccion();
 
             for (Pedido p : pendientes) {
-                // Calculamos: fechaPedido + minutosPreparacion
                 LocalDateTime fechaEnvioEstimada = p.getFechaHora().plusMinutes(
                         p.getArticulo().getTiempoPreparacionMin()
                 );
@@ -197,7 +205,8 @@ public class Controlador {
 
     private void validarEstadoPedido(String nuevoEstado) throws DAOException {
         if (!"PENDIENTE".equalsIgnoreCase(nuevoEstado) && !"ENVIADO".equalsIgnoreCase(nuevoEstado)) {
-            throw new DAOException("Estado no válido. Solo se permite PENDIENTE o ENVIADO.", new SQLException());
+            // Eliminado new SQLException()
+            throw new DAOException("Estado no válido. Solo se permite PENDIENTE o ENVIADO.");
         }
     }
 
@@ -270,7 +279,14 @@ public class Controlador {
 
     public void eliminarCliente(Cliente cliente) throws DAOException {
         if (cliente != null) {
-            clienteDAO.eliminar(cliente.getIdCliente());
+            try {
+                factory.iniciarTransaccion();
+                clienteDAO.eliminar(cliente.getIdCliente());
+                factory.confirmarTransaccion();
+            } catch (DAOException e) {
+                factory.cancelarTransaccion();
+                throw e;
+            }
         }
     }
 
@@ -326,7 +342,14 @@ public class Controlador {
             throw new RecursoNoEncontradoException("Articulo", codigo);
         }
 
-        articuloDAO.eliminar(codigo);
+        try {
+            factory.iniciarTransaccion();
+            articuloDAO.eliminar(codigo);
+            factory.confirmarTransaccion();
+        } catch (DAOException e) {
+            factory.cancelarTransaccion();
+            throw e;
+        }
     }
 
     public List<Articulo> obtenerTodosArticulos() throws DAOException {
