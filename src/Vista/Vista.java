@@ -424,6 +424,11 @@ public class Vista {
         try {
             TerminalUI.info("--- DATOS DEL PEDIDO ---");
             String codigoArticulo = leerTextoNoVacio("Código del artículo: ");
+
+            if (!controlador.existeArticulo(codigoArticulo)) {
+                throw new RecursoNoEncontradoException("Artículo", codigoArticulo);
+            }
+
             int cantidad = leerEntero("Cantidad: ");
 
             Pedido pedidoRealizado = controlador.anadirPedido(emailCliente, codigoArticulo, cantidad);

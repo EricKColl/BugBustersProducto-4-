@@ -30,6 +30,19 @@ public class ArticuloDAOJPA implements ArticuloDAO {
     }
 
     @Override
+    public boolean existePorCodigo(String codigo) throws DAOException {
+        String jpql = "SELECT COUNT(a) FROM Articulo a WHERE a.codigo = :codigo";
+        try {
+            Long count = em.createQuery(jpql, Long.class)
+                    .setParameter("codigo", codigo)
+                    .getSingleResult();
+            return count > 0;
+        } catch (Exception e) {
+            throw new DAOException("Error al verificar existencia del artículo", e);
+        }
+    }
+
+    @Override
     public List<Articulo> obtenerTodos() throws DAOException {
         // Usamos JPQL para consultar a la Entidad Articulo, no a la tabla
         try {
