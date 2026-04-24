@@ -65,8 +65,12 @@ public class MySQLDAOFactory extends DAOFactory {
     @Override
     public void cancelarTransaccion() throws DAOException {
         try {
-            if (getEntityManager().getTransaction().isActive()) {
-                getEntityManager().getTransaction().rollback();
+            if (em != null && em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            // Limpiar el EM en caso de error para forzar a que getEntityManager() cree uno nuevo y limpio la próxima vez
+            if (em != null) {
+                em.clear();
             }
         } catch (Exception e) {
             throw new DAOException("Error al cancelar transacción JPA", e);
