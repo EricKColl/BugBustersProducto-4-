@@ -5,7 +5,7 @@
 **Asignatura:** FP.447 - (P) Programación orientada a objetos con acceso a bases de datos  
 **Institución:** UOC  
 **Proyecto:** BugBusters Producto 4  
-**Grupo:** BugBusters
+**Grupo:** BugBusters  
 
 ---
 
